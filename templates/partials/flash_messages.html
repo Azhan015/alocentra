@@ -1,0 +1,27 @@
+<div id="toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999;">
+    {% if messages %}
+    {% for message in messages %}
+    <div class="toast align-items-center mb-2 {% if message.tags %}border-{{ message.tags }}{% endif %}" role="alert"
+        aria-live="assertive" aria-atomic="true" data-bs-delay="4000"
+        style="background-color: var(--bg-elevated); border-left: 4px solid var(--primary); min-width: 280px; box-shadow: var(--shadow-card);">
+        <div class="d-flex">
+            <div class="toast-body text-white">
+                {{ message }}
+            </div>
+            <button type="button" class="btn-close btn-close-white  me-2 m-auto" data-bs-dismiss="toast"
+                aria-label="Close"></button>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var toastElList = [].slice.call(document.querySelectorAll('.toast'))
+        var toastList = toastElList.map(function (toastEl) {
+            return new bootstrap.Toast(toastEl)
+        })
+        toastList.forEach(toast => toast.show())
+    });
+</script>

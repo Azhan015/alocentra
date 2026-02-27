@@ -1,0 +1,331 @@
+{% extends 'base_dashboard.html' %}
+{% load static %}
+
+{% block dashboard_content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div class="d-flex align-items-center">
+        <h3 class="fw-bold m-0 me-3" style="color: var(--text-primary);">Faculty Members</h3>
+        <span class="badge"
+            style="background: rgba(108,99,255,0.15); border: 1px solid var(--primary-light); color: var(--primary-light); border-radius: 50px; padding: 6px 12px; font-weight: normal;">{{
+            faculty_count }} members</span>
+    </div>
+    <div class="d-flex gap-2">
+        {% if permissions.can_add_faculty %}
+        <button class="btn btn-outline-custom d-flex align-items-center" data-bs-toggle="modal"
+            data-bs-target="#importModal">
+            <i class="bi bi-file-earmark-excel me-2"></i> Import from Excel
+        </button>
+        <button class="btn btn-primary-custom d-flex align-items-center" data-bs-toggle="modal"
+            data-bs-target="#addFacultyModal" onclick="clearFacultyForm()">
+            <i class="bi bi-plus-lg me-2"></i> Add Faculty
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card bg-surface border-subtle radius-card shadow-card p-4"
+    style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); box-shadow: var(--shadow-card);">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <form method="GET" class="d-flex gap-2" style="max-width: 500px; width: 100%;">
+            <input type="text" name="q" class="form-control" placeholder="Search name..." value="{{ q }}">
+            <select name="dept" class="form-select w-auto">
+                <option value="">All Departments</option>
+                {% for dept in departments %}
+                <option value="{{ dept }}" {% if d==dept %}selected{% endif %}>{{ dept }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-secondary">Filter</button>
+        </form>
+
+        {% if permissions.can_delete_faculty %}
+        <button id="bulkDeleteBtn" class="btn btn-danger d-none align-items-center"
+            style="background: var(--accent); border: none;" onclick="triggerBulkDelete()">
+            <i class="bi bi-trash me-2"></i> Delete Selected
+        </button>
+        {% endif %}
+    </div>
+
+    {% if faculty_count == 0 and not q and not d %}
+    <div class="text-center py-5">
+        <i class="bi bi-people text-secondary" style="font-size: 64px;"></i>
+        <h5 class="mt-3 fw-bold">No faculty added yet</h5>
+        <p class="text-secondary">Import from Excel or add manually.</p>
+        {% if permissions.can_add_faculty %}
+        <button class="btn btn-primary-custom mt-2" data-bs-toggle="modal" data-bs-target="#addFacultyModal">Add
+            Faculty</button>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="table-responsive">
+        <table class="table table-borderless table-hover" id="facultyTable">
+            <thead style="background: var(--bg-elevated); border-bottom: 2px solid var(--border-subtle);">
+                <tr class="text-secondary small text-uppercase" style="letter-spacing: 0.05em;">
+                    <th scope="col" style="width: 40px;">
+                        <input class="form-check-input" type="checkbox" id="selectAll">
+                    </th>
+                    <th scope="col" style="width: 60px;">#</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Designation</th>
+                    <th scope="col">Department</th>
+                    <th scope="col" class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fac in page_obj %}
+                <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-primary);">
+                    <td><input class="form-check-input row-checkbox" type="checkbox" value="{{ fac.id }}"></td>
+                    <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
+                    <td class="fw-bold">{{ fac.name }}</td>
+                    <td>{{ fac.designation }}</td>
+                    <td>{{ fac.department|default:"-" }}</td>
+                    <td class="text-end">
+                        {% if permissions.can_add_faculty %}
+                        <button class="btn btn-link text-primary p-0 me-3 custom-hover"
+                            onclick="editFaculty({{ fac.id }})"><i class="bi bi-pencil"></i></button>
+                        {% endif %}
+                        {% if permissions.can_delete_faculty %}
+                        <button class="btn btn-link text-danger p-0"
+                            onclick="deleteFaculty({{ fac.id }}, '{{ fac.name|escapejs }}')"><i class="bi bi-trash"
+                                style="color: var(--accent)"></i></button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-secondary py-4">No results found for your search.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include 'partials/pagination.html' %}
+    {% endif %}
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal fade" id="addFacultyModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content auth-modal-content"
+            style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 20px;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="facultyModalTitle">Add Faculty</h5>
+                <button type="button" class="btn-close btn-close-white " data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pb-4">
+                <form id="facultyForm">
+                    <input type="hidden" id="facultyId">
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Name</label>
+                        <input type="text" class="form-control" id="facName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Designation</label>
+                        <input type="text" class="form-control" id="facDesig" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-secondary small">Department</label>
+                        <input type="text" class="form-control" id="facDept">
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-secondary small">Email</label>
+                        <input type="email" class="form-control" id="facEmail">
+                    </div>
+                    <button type="button" class="btn btn-primary-custom w-100 py-2 fw-bold" onclick="saveFaculty()">Save
+                        Faculty</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content auth-modal-content"
+            style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 20px;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">Import Faculty from Excel</h5>
+                <button type="button" class="btn-close btn-close-white " data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pb-4" id="importStep1">
+                <div id="dropZone" class="text-center"
+                    style="border: 2px dashed var(--border-subtle); border-radius: 12px; padding: 48px; background: rgba(108,99,255,0.05); cursor: pointer;"
+                    onclick="document.getElementById('excelFile').click()">
+                    <i class="bi bi-cloud-upload" style="font-size: 48px; color: var(--primary-light);"></i>
+                    <h5 class="mt-3 mb-2">Drop your Excel file here</h5>
+                    <p class="text-secondary small mb-0">or click to browse — accepts .xlsx and .xls</p>
+                    <input type="file" id="excelFile" class="d-none" accept=".xlsx, .xls">
+                </div>
+                <div class="text-center mt-3">
+                    <small class="text-secondary">Expected Columns: <strong>Name</strong>, <strong>Designation</strong>,
+                        <strong>Department</strong>, <strong>Email</strong></small>
+                </div>
+            </div>
+            <div class="modal-body pb-4 d-none" id="importStep2">
+                <div class="d-flex justify-content-between mb-3 align-items-center">
+                    <h6 class="m-0 text-primary-light">Preview Import — <span id="previewCount">0</span> rows found</h6>
+                    <span class="small text-secondary">Review data before confirming.</span>
+                </div>
+                <div class="table-responsive mb-4"
+                    style="max-height: 300px; border: 1px solid var(--border-subtle); border-radius: 8px;">
+                    <table class="table table-borderless table-sm small text-white mb-0" id="previewTable">
+                        <thead style="background: var(--bg-elevated); position: sticky; top: 0;">
+                            <tr>
+                                <th>Name</th>
+                                <th>Designation</th>
+                                <th>Department</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewTbody"></tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-outline-custom" onclick="resetImport()">Back</button>
+                    <button class="btn btn-primary-custom" onclick="confirmImportRooms()">Confirm Import</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="{% static 'js/excel-import.js' %}"></script>
+<script>
+    const CSRF_TOKEN = '{{ csrf_token }}';
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    $("#selectAll").on('change', function () {
+        $(".row-checkbox").prop('checked', this.checked);
+        toggleBulkBtn();
+    });
+    $(".row-checkbox").on('change', toggleBulkBtn);
+
+    function toggleBulkBtn() {
+        const count = $(".row-checkbox:checked").length;
+        const btn = document.getElementById('bulkDeleteBtn');
+        if (btn) {
+            if (count > 0) {
+                btn.classList.remove('d-none');
+                btn.classList.add('d-flex');
+                btn.innerHTML = `<i class="bi bi-trash me-2"></i> Delete Selected (${count})`;
+            } else {
+                btn.classList.add('d-none');
+                btn.classList.remove('d-flex');
+            }
+        }
+    }
+
+    function clearFacultyForm() {
+        document.getElementById('facultyId').value = '';
+        document.getElementById('facName').value = '';
+        document.getElementById('facDesig').value = '';
+        document.getElementById('facDept').value = '';
+        document.getElementById('facEmail').value = '';
+        document.getElementById('facultyModalTitle').innerText = 'Add Faculty';
+    }
+
+    function editFaculty(id) {
+        fetch(`/faculty/${id}/edit/`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('facultyId').value = id;
+                document.getElementById('facName').value = data.name;
+                document.getElementById('facDesig').value = data.designation;
+                document.getElementById('facDept').value = data.department;
+                document.getElementById('facEmail').value = data.email;
+                document.getElementById('facultyModalTitle').innerText = 'Edit Faculty';
+                const modal = new bootstrap.Modal(document.getElementById('addFacultyModal'));
+                modal.show();
+            });
+    }
+
+    function saveFaculty() {
+        const id = document.getElementById('facultyId').value;
+        const name = document.getElementById('facName').value;
+        const desig = document.getElementById('facDesig').value;
+        const dept = document.getElementById('facDept').value;
+        const email = document.getElementById('facEmail').value;
+        const url = id ? `/faculty/${id}/edit/` : `/faculty/add/`;
+
+        const fd = new FormData();
+        fd.append('name', name);
+        fd.append('designation', desig);
+        fd.append('department', dept);
+        fd.append('email', email);
+
+        fetch(url, {
+            method: 'POST',
+            body: fd,
+            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    if (typeof showToast === 'function') showToast(data.message, 'error');
+                    else alert(data.message);
+                }
+            });
+    }
+
+    function showConfirm(title, message, callback) {
+        document.getElementById('confirmModalTitle').innerText = title;
+        document.getElementById('confirmModalMessage').innerText = message;
+        document.getElementById('confirmModalBtn').onclick = () => {
+            const m = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
+            m.hide();
+            callback();
+        };
+        const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+        modal.show();
+    }
+
+    function deleteFaculty(id, name) {
+        showConfirm('Delete Faculty', `Are you sure you want to delete ${name}?`, () => {
+            fetch(`/faculty/${id}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) location.reload();
+                    else if (typeof showToast === 'function') showToast(data.message, 'error');
+                });
+        });
+    }
+
+    function triggerBulkDelete() {
+        const ids = [];
+        $(".row-checkbox:checked").each(function () { ids.push(this.value); });
+        showConfirm('Bulk Delete', `Are you sure you want to delete ${ids.length} faculty?`, () => {
+            fetch(`/faculty/bulk-delete/`, {
+                method: 'POST',
+                body: JSON.stringify({ ids: ids }),
+                headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) location.reload();
+                    else if (typeof showToast === 'function') showToast(data.message, 'error');
+                });
+        });
+    }
+</script>
+{% endblock %}

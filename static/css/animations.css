@@ -1,0 +1,91 @@
+body.intro-active {
+    overflow: hidden;
+}
+
+#intro-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg-base);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.intro-logo-container {
+    opacity: 0;
+    transform: scale(0.3);
+}
+
+.intro-wordmark {
+    display: flex;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 3rem;
+    margin-top: 20px;
+}
+
+.intro-wordmark span {
+    opacity: 0;
+    transform: translateY(40px);
+}
+
+.char-alo {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.char-centra {
+    color: var(--text-primary);
+    font-weight: 800;
+}
+
+.intro-tagline {
+    opacity: 0;
+    margin-top: 15px;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    letter-spacing: 1px;
+}
+
+.intro-progress-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: var(--bg-surface);
+}
+
+.intro-progress-bar {
+    width: 0%;
+    height: 100%;
+    background: var(--gradient-btn);
+}
+
+.shimmer-effect {
+    position: relative;
+    overflow: hidden;
+}
+
+.shimmer-effect::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: shimmer 1s ease-in-out forward;
+    animation-delay: 1.5s;
+}
+
+@keyframes shimmer {
+    100% {
+        left: 200%;
+    }
+}

@@ -1,0 +1,50 @@
+{% extends 'base_dashboard.html' %}
+{% block dashboard_content %}
+<div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h3 class="fw-bold m-0" style="color: var(--text-primary);">Exam Timetables</h3>
+        <p class="text-secondary mt-1 mb-0">Manage course-wise and department-wise schedules</p>
+    </div>
+    {% if permissions.can_edit_timetable %}
+    <a href="{% url 'timetable:builder' %}" class="btn btn-primary-custom d-flex align-items-center">
+        <i class="bi bi-calendar-plus me-2"></i> Build Timetable
+    </a>
+    {% endif %}
+</div>
+
+<div class="card bg-surface border-subtle radius-card shadow-card p-4"
+    style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+    <div class="table-responsive">
+        <table class="table table-borderless table-hover mb-0">
+            <thead style="background: var(--bg-elevated); border-bottom: 2px solid var(--border-subtle);">
+                <tr class="text-secondary small text-uppercase" style="letter-spacing: 0.05em;">
+                    <th>Exam Type</th>
+                    <th>Date Range</th>
+                    <th>Created By</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sessions %}
+                <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-primary);"
+                    class="align-middle">
+                    <td class="fw-bold">{{ s.exam_type.name }}</td>
+                    <td class="text-secondary">{{ s.date_from|date:"d M Y" }} - {{ s.date_to|date:"d M Y" }}</td>
+                    <td class="text-secondary">{{ s.created_by.name }}</td>
+                    <td class="text-end">
+                        {% if permissions.can_edit_timetable %}
+                        <a href="{% url 'timetable:builder_edit' s.id %}" class="btn btn-sm btn-outline-custom">Edit /
+                            View</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-secondary py-4">No timetables built yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

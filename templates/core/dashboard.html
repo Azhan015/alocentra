@@ -1,0 +1,100 @@
+{% extends 'base_dashboard.html' %}
+
+{% block dashboard_content %}
+<div class="mb-5 mt-3">
+    <h2 class="fw-bold m-0" style="color: var(--text-primary);">Welcome back, {{ user.name }}! 👋</h2>
+    <p class="text-secondary mt-1 mb-4">{% now "l, j F Y" %}</p>
+    <div style="height: 1px; background: var(--border-subtle); width: 100%;"></div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper"><i class="bi bi-door-open"></i></div>
+            <div>
+                <div class="stat-label">Total Rooms</div>
+                <div class="stat-value">{{ room_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper"><i class="bi bi-people"></i></div>
+            <div>
+                <div class="stat-label">Faculty Members</div>
+                <div class="stat-value">{{ faculty_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon-wrapper"><i class="bi bi-clipboard-check"></i></div>
+            <div>
+                <div class="stat-label">Duty Sessions</div>
+                <div class="stat-value">{{ session_count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4 class="fw-bold mb-4" style="color: var(--text-primary);">What would you like to do?</h4>
+
+<div class="row g-4">
+    {% if permissions.can_view_rooms %}
+    <div class="col-md-6 col-xl-4">
+        <a href="/rooms/" class="dashboard-card d-flex flex-column">
+            <div class="card-icon"><i class="bi bi-door-open"></i></div>
+            <div class="card-title">View Rooms</div>
+            <div class="card-desc flex-grow-1">Manage exam venues and seating capacities. Import from Excel or add
+                manually.</div>
+            <div class="card-arrow text-end">&rarr;</div>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if permissions.can_view_faculty %}
+    <div class="col-md-6 col-xl-4">
+        <a href="/faculty/" class="dashboard-card d-flex flex-column">
+            <div class="card-icon"><i class="bi bi-people"></i></div>
+            <div class="card-title">View Faculty</div>
+            <div class="card-desc flex-grow-1">Manage the faculty members available for exam duty assignments.</div>
+            <div class="card-arrow text-end">&rarr;</div>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if permissions.can_view_timetable %}
+    <div class="col-md-6 col-xl-4">
+        <a href="/timetable/" class="dashboard-card d-flex flex-column">
+            <div class="card-icon"><i class="bi bi-calendar-week"></i></div>
+            <div class="card-title">Exam Timetable</div>
+            <div class="card-desc flex-grow-1">Build structured exam timetables by department, course and subject.</div>
+            <div class="card-arrow text-end">&rarr;</div>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if permissions.can_assign_duty %}
+    <div class="col-md-6 col-xl-4">
+        <a href="/duty/assign/" class="dashboard-card d-flex flex-column">
+            <div class="card-icon"><i class="bi bi-person-check"></i></div>
+            <div class="card-title">Assign Duty</div>
+            <div class="card-desc flex-grow-1">Run the three-step wizard to assign faculty to exam rooms for the entire
+                period.</div>
+            <div class="card-arrow text-end">&rarr;</div>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if user.is_coe or permissions.can_manage_users %}
+    <div class="col-md-6 col-xl-4">
+        <a href="/users/" class="dashboard-card d-flex flex-column">
+            <div class="card-icon"><i class="bi bi-shield-person"></i></div>
+            <div class="card-title">Manage Users</div>
+            <div class="card-desc flex-grow-1">Add staff members with custom access controls for each feature.</div>
+            <div class="card-arrow text-end">&rarr;</div>
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

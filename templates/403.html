@@ -1,0 +1,18 @@
+{% extends 'base_dashboard.html' %}
+{% block title %}Access Denied | AloCentra{% endblock %}
+
+{% block dashboard_content %}
+<div class="d-flex flex-column align-items-center justify-content-center h-100 text-center py-5">
+    <div
+        style="font-size: 80px; font-weight: 800; line-height: 1; background: var(--gradient-btn); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        403
+    </div>
+    <h3 class="fw-bold mt-3 mb-2" style="color: var(--text-primary);">Access Denied</h3>
+    <p class="text-secondary mb-4" style="max-width: 400px;">
+        You do not have the necessary permissions to view this page or perform this action.
+    </p>
+    <a href="{% url 'core:dashboard' %}" class="btn btn-primary-custom px-4 py-2 fw-bold">
+        Return to Dashboard
+    </a>
+</div>
+{% endblock %}

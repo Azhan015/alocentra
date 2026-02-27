@@ -1,0 +1,95 @@
+{% extends 'base_dashboard.html' %}
+{% block dashboard_content %}
+<div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h3 class="fw-bold m-0" style="color: var(--text-primary);">Duty Assignments</h3>
+        <p class="text-secondary mt-1 mb-0">{{ session.title }} ({{ session.exam_type.name }})</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-custom d-flex align-items-center" onclick="exportExcel()">
+            <i class="bi bi-file-earmark-spreadsheet me-2"></i> Export Excel
+        </button>
+        <button class="btn btn-primary-custom d-flex align-items-center" onclick="exportPDF()">
+            <i class="bi bi-file-earmark-pdf me-2"></i> Export PDF
+        </button>
+    </div>
+</div>
+
+<div class="card bg-surface border-subtle radius-card shadow-card p-4"
+    style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+
+    <div id="printArea" class="bg-white p-4 rounded" style="color: #000;">
+        <div class="text-center mb-4 d-none d-print-block" id="printHeader">
+            <h2 class="fw-bold fs-4 mb-1">AloCentra College of Engineering</h2>
+            <h3 class="fw-bold fs-5 mb-2">Exam Duty Allotment</h3>
+            <p class="mb-1"><strong>Session:</strong> {{ session.title }}</p>
+            <p class="mb-1"><strong>Duration:</strong> {{ session.exam_type.duration_hours }}</p>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm" id="resultsTable" style="border-color: #dee2e6;">
+                <thead style="background: #f8f9fa;">
+                    <tr class="text-uppercase small fw-bold">
+                        <th>Date</th>
+                        <th>Room No</th>
+                        <th>Faculty Name</th>
+                        <th>Designation</th>
+                        <th>Role</th>
+                        <th>Signature</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in results %}
+                    <tr>
+                        <td>{{ res.date|date:"d M Y" }}</td>
+                        <td>{{ res.room.room_no }}</td>
+                        <td class="fw-bold">{{ res.faculty.name }}</td>
+                        <td>{{ res.faculty.designation }}</td>
+                        <td>
+                            {% if res.is_reliever %}
+                            <span class="badge bg-warning text-white">Reliever</span>
+                            {% else %}
+                            <span class="badge bg-primary">Invigilator</span>
+                            {% endif %}
+                        </td>
+                        <td style="width: 120px;"></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4">No assignments could be generated. Check faculty
+                            capacity.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+    function exportExcel() {
+        const table = document.getElementById("resultsTable");
+        const wb = XLSX.utils.table_to_book(table, { sheet: "Duty Assignments" });
+        XLSX.writeFile(wb, "Duty_Assignments_{{ session.id }}.xlsx");
+    }
+
+    function exportPDF() {
+        const element = document.getElementById('printArea');
+        document.getElementById('printHeader').classList.remove('d-none');
+
+        const opt = {
+            margin: 0.5,
+            filename: 'Duty_Assignments_{{ session.id }}.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            document.getElementById('printHeader').classList.add('d-none');
+        });
+    }
+</script>
+{% endblock %}

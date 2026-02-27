@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 100" width="300" height="100">
+  <defs>
+    <linearGradient id="ribbonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9B8CFF" />
+      <stop offset="50%" stop-color="#8072FF" />
+      <stop offset="100%" stop-color="#6A80FF" />
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComponentTransfer in="blur" result="glow">
+        <feFuncA type="linear" slope="0.5"/>
+      </feComponentTransfer>
+      <feComposite in="SourceGraphic" in2="glow" operator="over" />
+    </filter>
+    <style>
+      .text-alo { fill: #1F1B38; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600; font-size: 42px; }
+      .text-centra { fill: #6A80FF; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 42px; }
+    </style>
+  </defs>
+  
+  <g transform="translate(15, 10)" filter="url(#softGlow)">
+    <!-- Continuous Ribbon 'AC' Abstract -->
+    <path d="M 25 70 C 10 70, 0 55, 10 35 C 20 15, 45 10, 55 35 C 65 60, 45 80, 75 70 C 95 65, 85 30, 70 20" 
+          stroke="url(#ribbonGrad)" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 10 35 L 70 20" stroke="url(#ribbonGrad)" stroke-width="12" fill="none" stroke-linecap="round" opacity="0.4" />
+  </g>
+
+  <text x="120" y="64">
+    <tspan class="text-alo">Alo</tspan><tspan class="text-centra">Centra</tspan>
+  </text>
+</svg>

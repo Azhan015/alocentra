@@ -1,0 +1,95 @@
+<div class="modal fade" id="authModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content auth-modal-content">
+            <div class="modal-header border-0 pb-0 position-relative">
+                <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+
+                <div class="auth-tabs w-100 d-flex justify-content-center p-2 mb-3">
+                    <div class="auth-tab-bg">
+                        <button class="auth-tab auth-tab-login active" onclick="switchAuthTab('login')">Login</button>
+                        {% if not coe_registered %}
+                        <button class="auth-tab auth-tab-register" onclick="switchAuthTab('register')">Register</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-body pt-0">
+                <!-- Login Form -->
+                <div id="loginFormContainer">
+                    <form id="loginForm" method="POST" action="{% url 'accounts:login' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label auth-label">Email Address</label>
+                            <input type="email" name="email" class="form-control" required>
+                        </div>
+                        <div class="mb-3 position-relative">
+                            <label class="form-label auth-label">Password</label>
+                            <input type="password" name="password" id="loginPassword" class="form-control pe-5"
+                                required>
+                            <button type="button"
+                                class="btn btn-link toggle-password position-absolute end-0 top-50 translate-middle-y text-secondary text-decoration-none mt-2"
+                                onclick="togglePassword('loginPassword', this)">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="mb-4 form-check">
+                            <input type="checkbox" class="form-check-input" id="rememberMe" name="remember">
+                            <label class="form-check-label text-secondary small" for="rememberMe">Remember Me</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold">Login to
+                            Dashboard</button>
+                    </form>
+                </div>
+
+                <!-- Register Form -->
+                {% if not coe_registered %}
+                <div id="registerFormContainer" style="display: none;">
+                    <form id="registerForm" method="POST" action="{% url 'accounts:register' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label auth-label">Full Name</label>
+                            <input type="text" name="name" class="form-control" placeholder="John Smith" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label auth-label">Email Address</label>
+                            <input type="email" name="email" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label auth-label">Designation</label>
+                            <div class="badge-chip d-block text-center w-100 py-2">Controller of Examination</div>
+                        </div>
+                        <div class="mb-3 position-relative">
+                            <label class="form-label auth-label">Password</label>
+                            <input type="password" name="password" id="registerPassword" class="form-control pe-5"
+                                required>
+                            <button type="button"
+                                class="btn btn-link toggle-password position-absolute end-0 top-50 translate-middle-y text-secondary text-decoration-none mt-2"
+                                onclick="togglePassword('registerPassword', this)">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="mb-4 position-relative">
+                            <label class="form-label auth-label">Confirm Password</label>
+                            <input type="password" name="confirm_password" id="registerConfirmPassword"
+                                class="form-control pe-5" required>
+                            <button type="button"
+                                class="btn btn-link toggle-password position-absolute end-0 top-50 translate-middle-y text-secondary text-decoration-none mt-2"
+                                onclick="togglePassword('registerConfirmPassword', this)">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold">Create Account</button>
+                        <div class="text-center mt-3">
+                            <span class="text-secondary small">Already have an account? <a href="#"
+                                    onclick="switchAuthTab('login')"
+                                    class="text-primary text-decoration-none">Login</a></span>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

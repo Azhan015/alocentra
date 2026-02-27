@@ -1,0 +1,82 @@
+{% extends 'base_dashboard.html' %}
+{% load duty_tags %}
+{% block dashboard_content %}
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h3 class="fw-bold m-0" style="color: var(--text-primary);">Step 2: Assign Faculty</h3>
+        <p class="text-secondary mt-1 mb-0">{{ session.title }}</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <div
+            style="width: 120px; height: 8px; background: var(--bg-elevated); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-subtle);">
+            <div style="width: 66%; height: 100%; background: var(--gradient-btn);"></div>
+        </div>
+        <span class="small text-secondary fw-bold">2 / 3</span>
+    </div>
+</div>
+
+<div class="card bg-surface border-subtle radius-card shadow-card p-4"
+    style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+    <p class="text-secondary mb-4">Select faculty members and specify the number of duties each needs to complete during
+        this session.</p>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="table-responsive mb-4"
+            style="max-height: 400px; border: 1px solid var(--border-subtle); border-radius: 8px;">
+            <table class="table table-borderless table-hover mb-0">
+                <thead style="background: var(--bg-elevated); position: sticky; top: 0; z-index: 1;">
+                    <tr class="text-secondary small text-uppercase" style="letter-spacing: 0.05em;">
+                        <th style="width: 50px; padding-left: 20px;"><input type="checkbox" id="selectAll"
+                                class="form-check-input"></th>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th style="width: 150px;">Duty Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fac in faculties %}
+                    <tr style="border-bottom: 1px solid var(--border-subtle);" class="align-middle">
+                        <td style="padding-left: 20px;">
+                            <input type="checkbox" name="faculty" value="{{ fac.id }}"
+                                class="form-check-input row-checkbox" onchange="toggleCountInput(this, {{ fac.id }})" {%
+                                if fac.id in assignments %}checked{% endif %}>
+                        </td>
+                        <td class="fw-bold text-white">{{ fac.name }}</td>
+                        <td class="text-secondary">{{ fac.department }}</td>
+                        <td>
+                            <input type="number" name="duty_count_{{ fac.id }}" id="duty_count_{{ fac.id }}"
+                                class="form-control form-control-sm bg-elevated border-subtle text-white w-75" min="1"
+                                max="20" value="{{ assignments|get_item:fac.id|default:1 }}" {% if fac.id not in
+                                assignments %}disabled{% endif %}>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-secondary py-4">No faculty found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'duty:wizard_step1' %}" class="btn btn-outline-custom"><i class="bi bi-arrow-left me-2"></i>
+                Back</a>
+            <button type="submit" class="btn btn-primary-custom px-5 fw-bold">Continue to Relievers <i
+                    class="bi bi-arrow-right ms-2"></i></button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleCountInput(cb, id) {
+        document.getElementById('duty_count_' + id).disabled = !cb.checked;
+    }
+    document.getElementById('selectAll').addEventListener('change', function (e) {
+        document.querySelectorAll('.row-checkbox').forEach(cb => {
+            cb.checked = e.target.checked;
+            toggleCountInput(cb, cb.value);
+        });
+    });
+</script>
+{% endblock %}

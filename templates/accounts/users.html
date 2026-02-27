@@ -1,0 +1,255 @@
+{% extends 'base_dashboard.html' %}
+{% block dashboard_content %}
+<div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h3 class="fw-bold m-0" style="color: var(--text-primary);">Manage Users</h3>
+        <p class="text-secondary mt-1 mb-0">Control team access and permissions</p>
+    </div>
+    <button class="btn btn-primary-custom d-flex align-items-center" data-bs-toggle="modal"
+        data-bs-target="#addUserModal">
+        <i class="bi bi-person-plus me-2"></i> Invite User
+    </button>
+</div>
+
+<div class="card bg-surface border-subtle radius-card shadow-card p-4 mx-auto"
+    style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+    <div class="table-responsive">
+        <table class="table table-borderless table-hover mb-0">
+            <thead style="background: var(--bg-elevated); border-bottom: 2px solid var(--border-subtle);">
+                <tr class="text-secondary small text-uppercase" style="letter-spacing: 0.05em;">
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Added On</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users_list %}
+                <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-primary);"
+                    class="align-middle">
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="user-avatar me-3 text-white"
+                                style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                                {{ u.name|make_list|first|upper }}
+                            </div>
+                            <div>
+                                <div class="fw-bold">{{ u.name }}</div>
+                                <div class="small text-secondary">{{ u.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if u.is_coe %}
+                        <span class="badge bg-primary">COE</span>
+                        {% else %}
+                        <span class="badge"
+                            style="background: rgba(108,99,255,0.15); color: var(--primary-light);">STAFF</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.is_active %}
+                        <span class="text-success small"><i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i>
+                            Active</span>
+                        {% else %}
+                        <span class="text-warning small"><i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i>
+                            Pending</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-secondary">{{ u.created_at|date:"d M Y" }}</td>
+                    <td class="text-end">
+                        {% if not u.is_coe %}
+                        <button class="btn btn-link text-danger p-0"
+                            onclick="deleteUser('{{ u.id }}', '{{ u.name|escapejs }}')"><i class="bi bi-trash"
+                                style="color: var(--accent);"></i></button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content auth-modal-content"
+            style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 20px;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" style="color: var(--text-primary);">Invite New User</h5>
+                <button type="button" class="btn-close btn-close-white " data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pb-4">
+                <form id="userForm">
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <label class="form-label text-secondary small text-uppercase">Full Name</label>
+                            <input type="text" class="form-control" id="userName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small text-uppercase">Email</label>
+                            <input type="email" class="form-control" id="userEmail" required>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-secondary small text-uppercase">Designation</label>
+                        <input type="text" class="form-control" id="userDesig" required>
+                    </div>
+
+                    <h6 class="mb-3" style="color: var(--text-primary);">Permissions Configuration</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 rounded"
+                                style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle);">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="perm_can_view_rooms">
+                                    <label class="form-check-label text-white small" for="perm_can_view_rooms">View
+                                        Rooms</label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="perm_can_add_rooms">
+                                    <label class="form-check-label text-white small" for="perm_can_add_rooms">Add/Edit
+                                        Rooms</label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="perm_can_delete_rooms">
+                                    <label class="form-check-label text-danger small" for="perm_can_delete_rooms">Delete
+                                        Rooms</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 rounded"
+                                style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle);">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="perm_can_view_faculty">
+                                    <label class="form-check-label text-white small" for="perm_can_view_faculty">View
+                                        Faculty</label>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="perm_can_add_faculty">
+                                    <label class="form-check-label text-white small" for="perm_can_add_faculty">Add/Edit
+                                        Faculty</label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="perm_can_delete_faculty">
+                                    <label class="form-check-label text-danger small"
+                                        for="perm_can_delete_faculty">Delete Faculty</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 rounded"
+                                style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle);">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="perm_can_view_timetable">
+                                    <label class="form-check-label text-white small" for="perm_can_view_timetable">View
+                                        Timetable</label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="perm_can_edit_timetable">
+                                    <label class="form-check-label text-white small" for="perm_can_edit_timetable">Edit
+                                        Timetable</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 rounded"
+                                style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle);">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="perm_can_assign_duty">
+                                    <label class="form-check-label text-white small" for="perm_can_assign_duty">Run Duty
+                                        Assignment Wizard</label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="perm_can_manage_users">
+                                    <label class="form-check-label text-warning small"
+                                        for="perm_can_manage_users">Manage Users / Admin</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-primary-custom w-100 py-3 fw-bold fs-6 shadow"
+                        onclick="saveUser()">Send Email Invitation</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CSRF_TOKEN = '{{ csrf_token }}';
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function saveUser() {
+        const payload = {
+            name: document.getElementById('userName').value,
+            email: document.getElementById('userEmail').value,
+            designation: document.getElementById('userDesig').value,
+            permissions: {
+                can_view_rooms: document.getElementById('perm_can_view_rooms').checked,
+                can_add_rooms: document.getElementById('perm_can_add_rooms').checked,
+                can_delete_rooms: document.getElementById('perm_can_delete_rooms').checked,
+                can_view_faculty: document.getElementById('perm_can_view_faculty').checked,
+                can_add_faculty: document.getElementById('perm_can_add_faculty').checked,
+                can_delete_faculty: document.getElementById('perm_can_delete_faculty').checked,
+                can_view_timetable: document.getElementById('perm_can_view_timetable').checked,
+                can_edit_timetable: document.getElementById('perm_can_edit_timetable').checked,
+                can_assign_duty: document.getElementById('perm_can_assign_duty').checked,
+                can_manage_users: document.getElementById('perm_can_manage_users').checked,
+                can_view_duty: true,
+                can_export_duty: true
+            }
+        };
+
+        if (!payload.name || !payload.email || !payload.designation) {
+            alert("Please fill all required fields."); return;
+        }
+
+        fetch('/users/add/', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    if (typeof showToast === 'function') showToast(data.message, 'error');
+                    else alert(data.message);
+                }
+            });
+    }
+
+    function deleteUser(id, name) {
+        if (confirm(`Are you sure you want to delete user ${name}? This cannot be undone.`)) {
+            fetch(`/users/${id}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) location.reload();
+                    else alert(data.message);
+                });
+        }
+    }
+</script>
+{% endblock %}

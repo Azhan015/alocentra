@@ -1,0 +1,213 @@
+{% extends 'base_dashboard.html' %}
+{% block dashboard_content %}
+<div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+        <h3 class="fw-bold m-0" style="color: var(--text-primary);">Timetable Builder</h3>
+        <p class="text-secondary mt-1 mb-0">{% if timetable %}Editing {{ timetable.exam_type.name }}{% else %}Create new
+            schedule{% endif %}</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-custom" onclick="window.print()"><i class="bi bi-printer me-2"></i>
+            Print</button>
+        <button class="btn btn-primary-custom" onclick="saveTimetable()"><i class="bi bi-save me-2"></i> Save
+            Timetable</button>
+    </div>
+</div>
+
+<div class="card bg-surface border-subtle radius-card shadow-card p-4 mb-4"
+    style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label text-secondary small text-uppercase fw-bold">Exam Type</label>
+            <select id="exam_type" class="form-select bg-elevated border-subtle text-white">
+                {% for et in exam_types %}
+                <option value="{{ et.id }}" {% if timetable and timetable.exam_type_id==et.id %}selected{% endif %}>{{
+                    et.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-secondary small text-uppercase fw-bold">From Date</label>
+            <input type="date" id="date_from" class="form-control bg-elevated border-subtle text-white"
+                value="{{ timetable.date_from|date:'Y-m-d' }}" onchange="generateGrid()">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label text-secondary small text-uppercase fw-bold">To Date</label>
+            <input type="date" id="date_to" class="form-control bg-elevated border-subtle text-white"
+                value="{{ timetable.date_to|date:'Y-m-d' }}" onchange="generateGrid()">
+        </div>
+    </div>
+</div>
+
+<div class="card bg-surface border-subtle radius-card shadow-card p-4 overflow-auto"
+    style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+    <table class="table table-bordered table-dark text-center align-middle" id="timetableGrid">
+        <thead id="gridHead" style="background: var(--bg-elevated);">
+            <!-- Headers generated via JS -->
+        </thead>
+        <tbody id="gridBody">
+            <!-- Rows generated via JS -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const courses = [
+        {% for c in courses %}
+    { id: { { c.id } }, name: '{{ c.name|escapejs }}', section: '{{ c.section|escapejs }}' },
+    {% endfor %}
+    ];
+    const allSubjects = JSON.parse('{{ subjects_json|escapejs }}');
+    const existingCells = JSON.parse('{{ existing_cells_json|escapejs }}');
+
+    function getSubjectsForCourse(courseId) {
+        return allSubjects.filter(s => s.course_id == courseId);
+    }
+
+    function getExistingSubject(courseId, dateStr) {
+        const cell = existingCells.find(c => c.course_id == courseId && c.date === dateStr);
+        return cell ? cell.subject_id : "";
+    }
+
+    function generateGrid() {
+        const dateFrom = document.getElementById('date_from').value;
+        const dateTo = document.getElementById('date_to').value;
+        const thead = document.getElementById('gridHead');
+        const tbody = document.getElementById('gridBody');
+
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+
+        if (!dateFrom || !dateTo || new Date(dateFrom) > new Date(dateTo)) return;
+
+        let start = new Date(dateFrom);
+        let end = new Date(dateTo);
+        let dates = [];
+        let d = new Date(start);
+
+        // Generate headers (Dates)
+        let headerRow = document.createElement('tr');
+        let emptyTh = document.createElement('th');
+        emptyTh.innerText = 'Course \\ Date';
+        emptyTh.style.minWidth = '200px';
+        headerRow.appendChild(emptyTh);
+
+        while (d <= end) {
+            // Skip Sundays if needed
+            if (d.getDay() !== 0) {
+                let dateStr = d.toISOString().split('T')[0];
+                dates.push(dateStr);
+                let th = document.createElement('th');
+                th.innerHTML = `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}<br><small class="text-secondary">${d.toLocaleString('default', { weekday: 'short' })}</small>`;
+                th.style.minWidth = '180px';
+                headerRow.appendChild(th);
+            }
+            d.setDate(d.getDate() + 1);
+        }
+        thead.appendChild(headerRow);
+
+        // Generate rows (Courses)
+        courses.forEach(course => {
+            let tr = document.createElement('tr');
+            let tdName = document.createElement('td');
+            tdName.className = "fw-bold text-start";
+            tdName.innerHTML = `${course.name} ${course.section ? '<span class="badge bg-secondary">' + course.section + '</span>' : ''}`;
+            tr.appendChild(tdName);
+
+            let courseSubjects = getSubjectsForCourse(course.id);
+            let optionsHtml = `<option value="">---</option>`;
+            courseSubjects.forEach(sub => {
+                optionsHtml += `<option value="${sub.id}">${sub.code ? sub.code + ' - ' : ''}${sub.name}</option>`;
+            });
+
+            dates.forEach(dateStr => {
+                let td = document.createElement('td');
+                let existingSubId = getExistingSubject(course.id, dateStr);
+
+                let select = document.createElement('select');
+                select.className = "form-select form-select-sm bg-elevated border-subtle text-white custom-cell-select";
+                select.dataset.course = course.id;
+                select.dataset.date = dateStr;
+                select.innerHTML = optionsHtml;
+
+                if (existingSubId) select.value = existingSubId;
+
+                td.appendChild(select);
+                tr.appendChild(td);
+            });
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    function saveTimetable() {
+        const payload = {
+            exam_type: document.getElementById('exam_type').value,
+            date_from: document.getElementById('date_from').value,
+            date_to: document.getElementById('date_to').value,
+            cells: []
+        };
+
+        document.querySelectorAll('.custom-cell-select').forEach(sel => {
+            if (sel.value) {
+                payload.cells.push({
+                    course_id: sel.dataset.course,
+                    date: sel.dataset.date,
+                    subject_id: sel.value
+                });
+            }
+        });
+
+        fetch('{{ request.path }}', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' }
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    if (typeof showToast === 'function') showToast("Timetable saved successfully!", "success");
+                    else alert("Saved!");
+                    if (!window.location.pathname.includes(data.id)) {
+                        window.location.href = `/timetable/builder/${data.id}/`;
+                    }
+                } else {
+                    alert("Error: " + data.message);
+                }
+            });
+    }
+
+    // Initialize grid on load
+    document.addEventListener("DOMContentLoaded", generateGrid);
+</script>
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+
+        .card:last-child,
+        .card:last-child * {
+            visibility: visible;
+            color: black !important;
+            border-color: #333 !important;
+        }
+
+        .card:last-child {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            box-shadow: none !important;
+        }
+
+        .custom-cell-select {
+            appearance: none;
+            -webkit-appearance: none;
+            border: none !important;
+            background: transparent !important;
+            color: black !important;
+        }
+    }
+</style>
+{% endblock %}

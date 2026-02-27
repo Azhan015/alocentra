@@ -1,0 +1,62 @@
+{% extends 'base_dashboard.html' %}
+{% block dashboard_content %}
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h3 class="fw-bold m-0" style="color: var(--text-primary);">Duty Sessions History</h3>
+        <p class="text-secondary mt-1 mb-0">Past assignments and drafts</p>
+    </div>
+    {% if permissions.can_assign_duty %}
+    <a href="{% url 'duty:wizard_start' %}" class="btn btn-primary-custom d-flex align-items-center">
+        <i class="bi bi-plus-lg me-2"></i> New Session
+    </a>
+    {% endif %}
+</div>
+
+<div class="card bg-surface border-subtle radius-card shadow-card p-4"
+    style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+
+    <div class="table-responsive">
+        <table class="table table-borderless table-hover mb-0">
+            <thead style="background: var(--bg-elevated); border-bottom: 2px solid var(--border-subtle);">
+                <tr class="text-secondary small text-uppercase" style="letter-spacing: 0.05em;">
+                    <th>Session Title</th>
+                    <th>Exam Type</th>
+                    <th>Dates</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sessions %}
+                <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-primary);"
+                    class="align-middle">
+                    <td class="fw-bold">{{ s.title }}</td>
+                    <td class="text-secondary">{{ s.exam_type.name }}</td>
+                    <td class="text-secondary">{{ s.date_from|date:"d M" }} - {{ s.date_to|date:"d M Y" }}</td>
+                    <td>
+                        {% if s.status == 'FINALIZED' %}
+                        <span class="badge"
+                            style="background: rgba(0, 201, 167, 0.15); color: var(--secondary); border: 1px solid var(--secondary);">FINALIZED</span>
+                        {% else %}
+                        <span class="badge"
+                            style="background: rgba(108,99,255,0.15); color: var(--primary-light); border: 1px solid var(--primary-light);">DRAFT</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if s.status == 'FINALIZED' %}
+                        <a href="{% url 'duty:results' s.id %}" class="btn btn-sm btn-outline-custom">View Results</a>
+                        {% else %}
+                        <span class="text-secondary small">Drafts view disabled</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center text-secondary py-4">No sessions created yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

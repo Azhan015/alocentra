@@ -1,0 +1,51 @@
+{% load static %}
+<nav class="navbar navbar-expand-lg fixed-top"
+    style="height: 70px; background: var(--bg-surface); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-subtle);">
+    <div class="container">
+        <a class="navbar-brand" href="/" style="display: flex; align-items: center; text-decoration: none;">
+            <img src="{% static 'img/logo-icon.png' %}" alt="AloCentra Logo" height="36" class="me-2">
+            <span
+                style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.5rem; line-height: 1; letter-spacing: -0.5px;">
+                <span style="color: var(--text-primary); font-weight: 600;">Alo</span><span
+                    style="color: var(--text-primary); font-weight: 800;">Centra</span>
+            </span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu"
+            aria-controls="mobileMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end d-none d-lg-flex">
+            <ul class="navbar-nav align-items-center">
+                <li class="nav-item me-3">
+                    <button class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#authModal"
+                        onclick="switchAuthTab('login')">Login</button>
+                </li>
+                {% if not coe_registered %}
+                <li class="nav-item">
+                    <button class="btn btn-primary-custom px-4 rounded-pill" data-bs-toggle="modal"
+                        data-bs-target="#authModal" onclick="switchAuthTab('register')">Register</button>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Mobile Menu Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel"
+    style="background: var(--bg-surface); color: var(--text-primary);">
+    <div class="offcanvas-header border-bottom" style="border-color: var(--border-subtle) !important;">
+        <h5 class="offcanvas-title" id="mobileMenuLabel">Menu</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="d-grid gap-2 mt-4">
+            <button class="btn btn-outline-custom" data-bs-toggle="modal" data-bs-target="#authModal"
+                data-bs-dismiss="offcanvas" onclick="switchAuthTab('login')">Login</button>
+            {% if not coe_registered %}
+            <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#authModal"
+                data-bs-dismiss="offcanvas" onclick="switchAuthTab('register')">Register</button>
+            {% endif %}
+        </div>
+    </div>
+</div>

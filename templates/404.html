@@ -1,0 +1,26 @@
+{% extends 'base_html.html' %}
+{% block title %}Page Not Found | AloCentra{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center min-vh-100 text-center"
+    style="background: var(--bg-main);">
+    <div
+        style="font-size: 100px; font-weight: 800; line-height: 1; background: var(--gradient-btn); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        404
+    </div>
+    <h2 class="fw-bold mt-3 mb-2" style="color: var(--text-primary);">Page Not Found</h2>
+    <p class="text-secondary mb-4" style="max-width: 400px;">
+        The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.
+    </p>
+
+    {% if user.is_authenticated %}
+    <a href="{% url 'core:dashboard' %}" class="btn btn-primary-custom px-4 py-2 fw-bold shadow">
+        Go to Dashboard
+    </a>
+    {% else %}
+    <a href="{% url 'core:landing' %}" class="btn btn-primary-custom px-4 py-2 fw-bold shadow">
+        Go to Homepage
+    </a>
+    {% endif %}
+</div>
+{% endblock %}

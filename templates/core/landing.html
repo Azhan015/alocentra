@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/landing.css' %}">
+<link rel="stylesheet" href="{% static 'css/animations.css' %}">
+<link rel="stylesheet" href="{% static 'css/modals.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Intro Overlay -->
+<div id="intro-overlay">
+    <div class="intro-logo-container">
+        <img src="{% static 'img/logo-icon.png' %}" alt="Logo Icon" width="120" height="120">
+    </div>
+    <div class="intro-wordmark">
+        <span class="char-alo">A</span><span class="char-alo">l</span><span class="char-alo">o</span><span
+            class="char-centra">C</span><span class="char-centra">e</span><span class="char-centra">n</span><span
+            class="char-centra">t</span><span class="char-centra">r</span><span class="char-centra">a</span>
+    </div>
+    <div class="intro-tagline">Exam Cell, Reimagined.</div>
+    <div class="intro-progress-container">
+        <div class="intro-progress-bar"></div>
+    </div>
+</div>
+
+{% include 'partials/navbar_landing.html' %}
+
+<!-- HERO SECTION -->
+<section class="hero-section d-flex align-items-center justify-content-center position-relative overflow-hidden"
+    style="min-height: 100vh; background: var(--bg-base);">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+
+    <div class="container text-center position-relative z-1 mt-5">
+        <h1 class="hero-title mx-auto mb-4">Streamline Your Exam Cell Operations</h1>
+        <p class="hero-subtitle mx-auto mb-5">AloCentra is built for college exam cells — assign faculty to exam rooms
+            dynamically, create department-wise timetables, and export professional reports in seconds.</p>
+
+        <div class="d-flex justify-content-center gap-3 mb-5 flex-wrap">
+            <button class="btn btn-primary-custom btn-lg px-4" data-bs-toggle="modal" data-bs-target="#authModal"
+                onclick="switchAuthTab('register')">Get Started</button>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES SECTION -->
+<section class="features-section py-5" style="background: var(--bg-base);">
+    <div class="container py-5">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold mb-3" style="color: var(--text-primary);">Everything You Need. Nothing You Don't.</h2>
+            <p style="color: var(--text-secondary);">Purpose-built tools for modern exam cell operations.</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="feature-card h-100">
+                    <div class="feature-icon"><i class="bi bi-shuffle"></i></div>
+                    <h4>Dynamic Duty Assignment</h4>
+                    <p>Randomly assign faculty to exam rooms following custom duty counts and reliever configurations.
+                        No conflicts, no repetition.</p>
+                    <a href="#" class="feature-link">Explore feature &rarr;</a>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="feature-card h-100">
+                    <div class="feature-icon"><i class="bi bi-calendar3"></i></div>
+                    <h4>Exam Timetable Builder</h4>
+                    <p>Create structured timetables by department and course. Map subjects to dates and export the
+                        complete schedule instantly.</p>
+                    <a href="#" class="feature-link">Explore feature &rarr;</a>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="feature-card h-100">
+                    <div class="feature-icon"><i class="bi bi-file-earmark-arrow-down"></i></div>
+                    <h4>One-Click Reports</h4>
+                    <p>Export your complete assignment sheets as professionally formatted Excel or PDF files with exam
+                        title and duration.</p>
+                    <a href="#" class="feature-link">Explore feature &rarr;</a>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="feature-card h-100">
+                    <div class="feature-icon"><i class="bi bi-shield-lock"></i></div>
+                    <h4>Team Access Control</h4>
+                    <p>Invite staff members and control exactly which features they can access. Every permission is
+                        configurable.</p>
+                    <a href="#" class="feature-link">Explore feature &rarr;</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+
+<!-- FOOTER -->
+<footer style="background: var(--bg-surface); border-top: 1px solid var(--border-subtle); color: var(--text-secondary);"
+    class="py-5">
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4 mb-md-0">
+                <div class="d-flex align-items-center mb-3">
+                    <img src="{% static 'img/logo-icon.png' %}" alt="AloCentra Logo" height="28" class="me-2">
+                    <span
+                        style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.25rem; letter-spacing: -0.5px;">
+                        <span style="color: var(--text-primary); font-weight: 600;">Alo</span><span
+                            style="color: var(--text-primary); font-weight: 800;">Centra</span>
+                    </span>
+                </div>
+                <p>Exam Cell, Reimagined.</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <div class="d-flex flex-column gap-2">
+                    <a href="#" class="text-decoration-none text-secondary custom-hover">Home</a>
+                    <a href="#" class="text-decoration-none text-secondary custom-hover">Features</a>
+                    <a href="#" class="text-decoration-none text-secondary custom-hover" data-bs-toggle="modal"
+                        data-bs-target="#authModal" onclick="switchAuthTab('login')">Login</a>
+                </div>
+            </div>
+        </div>
+        <div class="border-top pt-3" style="border-color: var(--border-subtle) !important;">
+            <p class="mb-0 small">&copy; 2026 AloCentra. Built for Exam Cells.</p>
+        </div>
+    </div>
+</footer>
+
+{% include 'accounts/auth_modal.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/animation-intro.js' %}"></script>
+<script src="{% static 'js/auth-modal.js' %}"></script>
+{% endblock %}

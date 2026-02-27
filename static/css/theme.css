@@ -1,0 +1,113 @@
+:root {
+    --primary: #8A78F0;
+    --primary-dark: #6C5AE0;
+    --primary-light: #A596F5;
+    --secondary: #00C9A7;
+    --secondary-dark: #00A388;
+    --accent: #FF3366;
+    --bg-base: #0B0A11;
+    --bg-surface: #151322;
+    --bg-elevated: #1E1B31;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --text-primary: #FFFFFF;
+    --text-secondary: #A09DB0;
+    --text-inverse: #1F1B38;
+    --gradient-hero: linear-gradient(135deg, #8A78F0 0%, #00C9A7 100%);
+    --gradient-card: linear-gradient(145deg, #151322 0%, #1E1B31 100%);
+    --gradient-btn: linear-gradient(90deg, #8A78F0, #00C9A7);
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --shadow-hover: 0 0 30px rgba(138, 120, 240, 0.2), 0 16px 48px rgba(0, 0, 0, 0.5);
+    --radius-card: 16px;
+    --radius-btn: 10px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+}
+
+.btn-primary-custom {
+    background: var(--gradient-btn);
+    color: white;
+    border: none;
+    border-radius: var(--radius-btn);
+    transition: var(--transition);
+}
+
+.btn-primary-custom:hover {
+    box-shadow: var(--shadow-hover);
+    color: white;
+}
+
+.btn-outline-custom {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-btn);
+    transition: var(--transition);
+}
+
+.btn-outline-custom:hover {
+    background: rgba(108, 99, 255, 0.1);
+    color: var(--primary);
+}
+
+input.form-control,
+select.form-select,
+textarea.form-control {
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    border-radius: 10px;
+    transition: var(--transition);
+}
+
+input.form-control:focus,
+select.form-select:focus,
+textarea.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.25rem rgba(108, 99, 255, 0.25);
+    background-color: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+a,
+button,
+.card {
+    transition: var(--transition);
+}
+
+/* Global Table Overrides for Dark Mode */
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-primary);
+}
+
+.table-hover>tbody>tr:hover>* {
+    --bs-table-bg-state: transparent !important;
+    background-color: rgba(108, 99, 255, 0.1) !important;
+    color: var(--primary-light) !important;
+}
+
+.table-borderless>tbody>tr>td,
+.table-borderless>tbody>tr>th,
+.table-borderless>thead>tr>th {
+    border: none;
+}

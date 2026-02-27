@@ -1,0 +1,41 @@
+{% extends 'base_dashboard.html' %}
+{% block dashboard_content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card bg-surface border-subtle radius-card shadow-card p-4 p-md-5"
+            style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+            <h3 class="fw-bold mb-4 text-center" style="color: var(--text-primary);">Configure Duty Session</h3>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label class="form-label text-secondary small text-uppercase fw-bold">Session Title</label>
+                    <input type="text" name="title" class="form-control p-3 bg-elevated border-subtle text-white"
+                        required placeholder="e.g. Mid Term Fall 2024">
+                </div>
+                <div class="mb-4">
+                    <label class="form-label text-secondary small text-uppercase fw-bold">Exam Type</label>
+                    <select name="exam_type" class="form-select p-3 bg-elevated border-subtle text-white" required>
+                        {% for et in exam_types %}
+                        <option value="{{ et.id }}">{{ et.name }} ({{ et.duration_hours }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="row mb-5">
+                    <div class="col-6">
+                        <label class="form-label text-secondary small text-uppercase fw-bold">Start Date</label>
+                        <input type="date" name="date_from"
+                            class="form-control p-3 bg-elevated border-subtle text-white" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-secondary small text-uppercase fw-bold">End Date</label>
+                        <input type="date" name="date_to" class="form-control p-3 bg-elevated border-subtle text-white"
+                            required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary-custom w-100 py-3 fw-bold fs-5 shadow">Start Duty Wizard <i
+                        class="bi bi-arrow-right ms-2"></i></button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
