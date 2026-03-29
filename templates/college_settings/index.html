@@ -1,0 +1,1047 @@
+{% extends 'base_dashboard.html' %}
+{% block dashboard_content %}
+<div class="mb-4">
+    <h3 class="fw-bold m-0" style="color: var(--text-primary);">Settings</h3>
+    <p class="text-secondary mt-1 mb-0">Colleges, programs, specialisations, courses, sections, and exam types.</p>
+</div>
+
+<ul class="nav nav-pills gap-2 mb-4 flex-wrap" id="settingsTabs" role="tablist">
+    <li class="nav-item"><button class="nav-link active" id="tab-dept" data-bs-toggle="pill" data-bs-target="#pane-dept" type="button">Departments</button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-prog" data-bs-toggle="pill" data-bs-target="#pane-prog" type="button">Programs</button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-spec" data-bs-toggle="pill" data-bs-target="#pane-spec" type="button">Specialisations</button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-crs" data-bs-toggle="pill" data-bs-target="#pane-crs" type="button">Courses</button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-sec" data-bs-toggle="pill" data-bs-target="#pane-sec" type="button">Sections</button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-exam" data-bs-toggle="pill" data-bs-target="#pane-exam" type="button">Exam types</button></li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="pane-dept">
+        <div class="card bg-surface border-subtle radius-card shadow-card p-4" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+            <div class="d-flex justify-content-between mb-3">
+                <h5 class="m-0">Departments</h5>
+                <button type="button" class="btn btn-primary-custom btn-sm" onclick="openDeptModal()">Add</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-borderless table-hover mb-0">
+                    <thead style="background: var(--bg-elevated);"><tr class="text-secondary small text-uppercase"><th>Name</th><th class="text-end">Actions</th></tr></thead>
+                    <tbody id="dept-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="pane-prog">
+        <div class="card bg-surface border-subtle radius-card shadow-card p-4" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+            <div class="d-flex justify-content-between mb-3">
+                <h5 class="m-0">Programs</h5>
+                <button type="button" class="btn btn-primary-custom btn-sm" onclick="openProgramModal()">Add</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-borderless table-hover mb-0">
+                    <thead style="background: var(--bg-elevated);"><tr class="text-secondary small text-uppercase"><th>Program</th><th>Department</th><th>Type</th><th>Semesters</th><th class="text-end">Actions</th></tr></thead>
+                    <tbody id="prog-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="pane-spec">
+        <div class="card bg-surface border-subtle radius-card shadow-card p-4" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+            <div class="d-flex justify-content-between mb-3">
+                <h5 class="m-0">Specialisations</h5>
+                <button type="button" class="btn btn-primary-custom btn-sm" onclick="openSpecModal()">Add</button>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <label class="small text-secondary m-0">Filter by program</label>
+                <select class="form-select form-select-sm w-auto" id="specFilterProgram" onchange="applySpecFilter()">
+                    <option value="">All</option>
+                    {% for p in programs %}
+                    <option value="{{ p.id }}">{{ p.department.name }} — {{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-borderless table-hover mb-0">
+                    <thead style="background: var(--bg-elevated);"><tr class="text-secondary small text-uppercase"><th>Name</th><th>Program</th><th>Department</th><th class="text-end">Actions</th></tr></thead>
+                    <tbody id="spec-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="pane-crs">
+        <div class="card bg-surface border-subtle radius-card shadow-card p-4" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+            <div class="d-flex justify-content-between mb-3">
+                <h5 class="m-0">Courses</h5>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-custom btn-sm" id="toggleCourseFilterBtn" onclick="toggleCourseFilterPanel()">Filter</button>
+                    <button type="button" class="btn btn-outline-custom btn-sm" id="toggleCourseBulkBtn" onclick="toggleCourseBulkPanel()">Bulk Add</button>
+                    <button type="button" class="btn btn-outline-custom btn-sm" onclick="openCourseImportModal()">Import Excel</button>
+                    <button type="button" class="btn btn-primary-custom btn-sm" onclick="openCourseAddModal()">Add</button>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 align-items-end mb-3 d-none" id="courseFilterPanel">
+                <div>
+                    <label class="small text-secondary">Program (required)</label>
+                    <select class="form-select form-select-sm" id="courseFilterProgram">
+                        <option value="">Select…</option>
+                        {% for p in programs %}
+                        <option value="{{ p.id }}">{{ p.department.name }} — {{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="small text-secondary">Semester (optional)</label>
+                    <input type="number" class="form-control form-control-sm" id="courseFilterSemester" min="1" style="width: 140px;">
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="applyCourseFilter()">Apply</button>
+                <button type="button" class="btn btn-outline-custom btn-sm" onclick="clearCourseFilter()">Clear</button>
+            </div>
+            <div class="border-top pt-3 mb-3 d-none" id="courseBulkPanel" style="border-color: var(--border-subtle) !important;">
+                <h6 class="mb-2">Bulk add courses</h6>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="small text-secondary">Program</label>
+                        <select class="form-select form-select-sm" id="bulkCourseProgram" onchange="onBulkCourseProgramChange()">
+                            {% for p in programs %}
+                            <option value="{{ p.id }}" data-sem="{{ p.total_semesters }}">{{ p.department.name }} — {{ p.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small text-secondary">Semester</label>
+                        <select class="form-select form-select-sm" id="bulkCourseSemester"></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="small text-secondary">Specialisation</label>
+                        <select class="form-select form-select-sm" id="bulkCourseSpec">
+                            <option value="">All sections</option>
+                            {% for s in specialisations %}
+                            <option value="{{ s.id }}" data-prog="{{ s.program_id }}">{{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="small text-secondary">Course type</label>
+                        <select class="form-select form-select-sm" id="bulkCourseType">
+                            <option value="core">Core</option>
+                            <option value="lab">Lab</option>
+                            <option value="sec">SEC</option>
+                            <option value="oe">OE</option>
+                            <option value="aecc">AECC</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="button" class="btn btn-outline-custom btn-sm" onclick="bulkAddCourseRow()">Add row</button>
+                    </div>
+                </div>
+                <div class="table-responsive mt-3">
+                    <table class="table table-dark table-sm align-middle mb-2" style="--bs-table-bg: var(--bg-elevated);">
+                        <thead>
+                            <tr class="text-secondary small text-uppercase">
+                                <th style="width: 180px;">Course Code</th>
+                                <th>Course Name</th>
+                                <th style="width: 60px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="bulkCourseRows"></tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <div class="text-secondary small me-auto" id="bulkCourseFeedback"></div>
+                    <button type="button" class="btn btn-primary-custom btn-sm" onclick="saveBulkCourses()">Save all</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-borderless table-hover mb-0">
+                    <thead style="background: var(--bg-elevated);"><tr class="text-secondary small text-uppercase"><th>Code</th><th>Name</th><th>Program</th><th>Sem</th><th>Type</th><th>Scope</th><th class="text-end">Actions</th></tr></thead>
+                    <tbody id="crs-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="pane-sec">
+        <div class="card bg-surface border-subtle radius-card shadow-card p-4" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+            <div class="d-flex justify-content-between mb-3 flex-wrap gap-2">
+                <h5 class="m-0">Sections</h5>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-custom btn-sm" onclick="openBulkSectionModal()">Bulk add</button>
+                    <button type="button" class="btn btn-primary-custom btn-sm" onclick="openSectionModal()">Add</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-borderless table-hover mb-0">
+                    <thead style="background: var(--bg-elevated);"><tr class="text-secondary small text-uppercase"><th>Program</th><th>Specialisation</th><th>Sem</th><th>Section</th><th class="text-end">Actions</th></tr></thead>
+                    <tbody id="sec-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="pane-exam">
+        <div class="card bg-surface border-subtle radius-card shadow-card p-4" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+            <div class="d-flex justify-content-between mb-3">
+                <h5 class="m-0">Exam types</h5>
+                <button type="button" class="btn btn-primary-custom btn-sm" onclick="openExamModal()">Add</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-borderless table-hover mb-0">
+                    <thead style="background: var(--bg-elevated);"><tr class="text-secondary small text-uppercase"><th>Name</th><th>Program type</th><th>Duration</th><th class="text-end">Actions</th></tr></thead>
+                    <tbody id="exam-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Department -->
+<div class="modal fade" id="deptModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px;">
+            <div class="modal-header border-0"><h5 class="modal-title" id="deptModalTitle">Department</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="deptId">
+                <div class="mb-3"><label class="form-label small text-secondary">Name</label><input type="text" class="form-control" id="deptName"></div>
+                <button type="button" class="btn btn-primary-custom w-100" onclick="saveDept()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Program -->
+<div class="modal fade" id="progModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px;">
+            <div class="modal-header border-0"><h5 class="modal-title" id="progModalTitle">Program</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="progId">
+                <div class="mb-3"><label class="form-label small text-secondary">Department</label>
+                    <select class="form-select" id="progDeptId">{% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}</select>
+                </div>
+                <div class="mb-3"><label class="form-label small text-secondary">Program name</label><input type="text" class="form-control" id="progName"></div>
+                <div class="mb-3">
+                    <label class="form-label small text-secondary">Program type</label>
+                    <select class="form-select" id="progType" onchange="toggleProgramTypeOther()">
+                        <option value="UG">UG</option>
+                        <option value="PG">PG</option>
+                        <option value="PHD">PHD</option>
+                        <option value="__other__">Others</option>
+                    </select>
+                    <input type="text" class="form-control mt-2 d-none" id="progTypeOther" placeholder="Enter custom program type">
+                </div>
+                <div class="mb-3"><label class="form-label small text-secondary">Total semesters</label><input type="number" class="form-control" id="progSemesters" min="1" max="12" value="6"></div>
+                <button type="button" class="btn btn-primary-custom w-100" onclick="saveProgram()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Specialisation -->
+<div class="modal fade" id="specModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px;">
+            <div class="modal-header border-0"><h5 class="modal-title" id="specModalTitle">Specialisation</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="specId">
+                <div class="mb-3"><label class="form-label small text-secondary">Program</label>
+                    <select class="form-select" id="specProgId">{% for p in programs %}<option value="{{ p.id }}">{{ p.department.name }} — {{ p.name }}</option>{% endfor %}</select>
+                </div>
+                <div class="mb-3"><label class="form-label small text-secondary">Name</label><input type="text" class="form-control" id="specName" placeholder="AIML, General…"></div>
+                <button type="button" class="btn btn-primary-custom w-100" onclick="saveSpec()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Course add (wizard) -->
+<div class="modal fade" id="courseAddModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px;">
+            <div class="modal-header border-0"><h5 class="modal-title">Add course</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label small text-secondary">Department</label><select class="form-select" id="caddDept" onchange="onCaddDept()">{% for d in departments %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}</select></div>
+                    <div class="col-md-6"><label class="form-label small text-secondary">Program</label><select class="form-select" id="caddProg"></select></div>
+                    <div class="col-md-4"><label class="form-label small text-secondary">Semester</label><input type="number" class="form-control" id="caddSem" min="1" value="1"></div>
+                    <div class="col-md-4"><label class="form-label small text-secondary">Code</label><input type="text" class="form-control" id="caddCode"></div>
+                    <div class="col-md-8"><label class="form-label small text-secondary">Course name</label><input type="text" class="form-control" id="caddName"></div>
+                    <div class="col-12"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="caddAll" checked onchange="toggleCaddSpec()"><label class="form-check-label" for="caddAll">Apply to all sections</label></div></div>
+                    <div class="col-12 d-none" id="caddSpecWrap"><label class="form-label small text-secondary">Specialisations (multi-select)</label><select class="form-select" id="caddSpecs" multiple size="4"></select></div>
+                </div>
+                <button type="button" class="btn btn-primary-custom w-100 mt-3" onclick="saveCourseAdd()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Course edit -->
+<div class="modal fade" id="courseEditModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px;">
+            <div class="modal-header border-0"><h5 class="modal-title">Edit course</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="ceditId">
+                <div class="mb-3"><label class="form-label small text-secondary">Program</label><select class="form-select" id="ceditProg">{% for p in programs %}<option value="{{ p.id }}">{{ p.department.name }} — {{ p.name }}</option>{% endfor %}</select></div>
+                <div class="mb-3"><label class="form-label small text-secondary">Semester</label><input type="number" class="form-control" id="ceditSem" min="1" value="1"></div>
+                <div class="mb-3"><label class="form-label small text-secondary">Code</label><input type="text" class="form-control" id="ceditCode"></div>
+                <div class="mb-3"><label class="form-label small text-secondary">Name</label><input type="text" class="form-control" id="ceditName"></div>
+                <div class="mb-3"><label class="form-label small text-secondary">Specialisation (empty = all sections)</label><select class="form-select" id="ceditSpec"><option value="">— All —</option>{% for s in specialisations %}<option value="{{ s.id }}" data-prog="{{ s.program_id }}">{{ s.program.department.name }} — {{ s.program.name }} — {{ s.name }}</option>{% endfor %}</select></div>
+                <button type="button" class="btn btn-primary-custom w-100" onclick="saveCourseEdit()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section -->
+<div class="modal fade" id="secModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px;">
+            <div class="modal-header border-0"><h5 class="modal-title" id="secModalTitle">Section</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="secId">
+                <div class="mb-3"><label class="form-label small text-secondary">Program</label><select class="form-select" id="secProg">{% for p in programs %}<option value="{{ p.id }}">{{ p.department.name }} — {{ p.name }}</option>{% endfor %}</select></div>
+                <div class="mb-3"><label class="form-label small text-secondary">Specialisation</label><select class="form-select" id="secSpec"><option value="">— None —</option>{% for s in specialisations %}<option value="{{ s.id }}" data-prog="{{ s.program_id }}">{{ s.name }}</option>{% endfor %}</select></div>
+                <div class="mb-3"><label class="form-label small text-secondary">Semester</label><input type="number" class="form-control" id="secSem" min="1" value="1"></div>
+                <div class="mb-3"><label class="form-label small text-secondary">Section name</label><input type="text" class="form-control" id="secName"></div>
+                <button type="button" class="btn btn-primary-custom w-100" onclick="saveSection()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk sections -->
+<div class="modal fade" id="bulkSecModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px;">
+            <div class="modal-header border-0"><h5 class="modal-title">Bulk add sections</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label small text-secondary">Program</label><select class="form-select" id="bsecProg">{% for p in programs %}<option value="{{ p.id }}">{{ p.department.name }} — {{ p.name }}</option>{% endfor %}</select></div>
+                <div class="mb-3"><label class="form-label small text-secondary">Specialisation</label><select class="form-select" id="bsecSpec"><option value="">— None —</option>{% for s in specialisations %}<option value="{{ s.id }}" data-prog="{{ s.program_id }}">{{ s.name }}</option>{% endfor %}</select></div>
+                <div class="mb-3"><label class="form-label small text-secondary">Semester</label><input type="number" class="form-control" id="bsecSem" min="1" value="1"></div>
+                <div class="mb-3"><label class="form-label small text-secondary">Sections (comma-separated)</label><input type="text" class="form-control" id="bsecNames" placeholder="A, B, C"></div>
+                <button type="button" class="btn btn-primary-custom w-100" onclick="saveBulkSec()">Add all</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Exam type -->
+<div class="modal fade" id="examModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px;">
+            <div class="modal-header border-0"><h5 class="modal-title" id="examModalTitle">Exam type</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="examId">
+                <div class="mb-3"><label class="form-label small text-secondary">Name</label><input type="text" class="form-control" id="examName"></div>
+                <div class="mb-3">
+                    <label class="form-label small text-secondary">Program type</label>
+                    <select class="form-select" id="examProgramType">
+                        <option value="">—</option>
+                    </select>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small text-secondary">Hours</label>
+                        <select class="form-select" id="examHours">
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-secondary">Minutes</label>
+                        <select class="form-select" id="examMinutes">
+                            <option value="0">00</option>
+                            <option value="15">15</option>
+                            <option value="30">30</option>
+                            <option value="45">45</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary-custom w-100" onclick="saveExam()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Course import -->
+<div class="modal fade" id="courseImportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">Import Courses from Excel</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div class="text-secondary small">Columns: program, semester, course_code, course_name, course_type, specialisation</div>
+                    <a class="btn btn-outline-custom btn-sm" href="{% url 'college_settings:courses_template' %}">Download template</a>
+                </div>
+                <form id="courseImportForm">
+                    <input type="file" class="form-control" id="courseExcelFile" accept=".xlsx,.xls" required>
+                    <button type="submit" class="btn btn-primary-custom w-100 mt-3">Upload & Import</button>
+                </form>
+                <div class="mt-3 small text-secondary" id="courseImportResult"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const CSRF = '{{ csrf_token }}';
+let SPEC_BY_PROG = {};
+{% for s in specialisations %}
+if (!SPEC_BY_PROG[{{ s.program_id }}]) SPEC_BY_PROG[{{ s.program_id }}] = [];
+SPEC_BY_PROG[{{ s.program_id }}].push({ id: {{ s.id }}, name: '{{ s.name|escapejs }}' });
+{% endfor %}
+
+function postForm(url, data) {
+    const body = new URLSearchParams(data);
+    return fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/x-www-form-urlencoded' }, body }).then(r => r.json());
+}
+
+function loadFrag(url, elId) {
+    return fetch(url).then(r => r.text()).then(html => { document.getElementById(elId).innerHTML = html; });
+}
+
+function fillSelect(sel, items, valKey, labelKey) {
+    sel.innerHTML = '';
+    items.forEach(item => {
+        const o = document.createElement('option');
+        o.value = item[valKey];
+        o.textContent = item[labelKey];
+        if (item.total_semesters != null) o.dataset.sem = item.total_semesters;
+        if (item.department_id != null) o.dataset.dept = item.department_id;
+        if (item.program_id != null) o.dataset.prog = item.program_id;
+        sel.appendChild(o);
+    });
+}
+
+function rebuildSpecByProg(specs) {
+    SPEC_BY_PROG = {};
+    specs.forEach(s => {
+        if (!SPEC_BY_PROG[s.program_id]) SPEC_BY_PROG[s.program_id] = [];
+        SPEC_BY_PROG[s.program_id].push({ id: s.id, name: s.name });
+    });
+}
+
+function refreshReferenceFromServer() {
+    return fetch('{% url "college_settings:api_reference" %}').then(r => r.json()).then(d => {
+        rebuildSpecByProg(d.specialisations);
+        fillSelect(document.getElementById('progDeptId'), d.departments, 'id', 'name');
+        fillSelect(document.getElementById('caddDept'), d.departments, 'id', 'name');
+        fillSelect(document.getElementById('specProgId'), d.programs, 'id', 'label');
+        fillSelect(document.getElementById('ceditProg'), d.programs, 'id', 'label');
+        fillSelect(document.getElementById('secProg'), d.programs, 'id', 'label');
+        fillSelect(document.getElementById('bsecProg'), d.programs, 'id', 'label');
+        // Filters and bulk forms
+        const pf = document.getElementById('courseFilterProgram');
+        if (pf) {
+            pf.innerHTML = '<option value="">Select…</option>';
+            (d.programs || []).forEach(p => {
+                const o = document.createElement('option');
+                o.value = p.id;
+                o.textContent = p.label;
+                pf.appendChild(o);
+            });
+        }
+        const sf = document.getElementById('specFilterProgram');
+        if (sf) {
+            sf.innerHTML = '<option value="">All</option>';
+            (d.programs || []).forEach(p => {
+                const o = document.createElement('option');
+                o.value = p.id;
+                o.textContent = p.label;
+                sf.appendChild(o);
+            });
+        }
+        const bulkProg = document.getElementById('bulkCourseProgram');
+        if (bulkProg) {
+            bulkProg.innerHTML = '';
+            (d.programs || []).forEach(p => {
+                const o = document.createElement('option');
+                o.value = p.id;
+                o.textContent = p.label;
+                o.dataset.sem = p.total_semesters;
+                bulkProg.appendChild(o);
+            });
+        }
+        const examPT = document.getElementById('examProgramType');
+        if (examPT) {
+            examPT.innerHTML = '<option value="">—</option>';
+            (d.program_types || []).forEach(pt => {
+                const o = document.createElement('option');
+                o.value = pt;
+                o.textContent = pt;
+                examPT.appendChild(o);
+            });
+        }
+        const ceditSpec = document.getElementById('ceditSpec');
+        const src = d.specialisations.map(s => {
+            const p = d.programs.find(x => x.id === s.program_id);
+            const lbl = p ? `${p.label} — ${s.name}` : s.name;
+            return { id: s.id, program_id: s.program_id, label: lbl };
+        });
+        ceditSpec.innerHTML = '<option value="">— All —</option>';
+        src.forEach(s => {
+            const o = document.createElement('option');
+            o.value = s.id;
+            o.textContent = s.label;
+            o.dataset.prog = String(s.program_id);
+            ceditSpec.appendChild(o);
+        });
+        ['secSpec', 'bsecSpec'].forEach(id => {
+            const sel = document.getElementById(id);
+            sel.innerHTML = '<option value="">— None —</option>';
+            d.specialisations.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s.id;
+                o.textContent = s.name;
+                o.dataset.prog = String(s.program_id);
+                sel.appendChild(o);
+            });
+        });
+        onCaddDept();
+        onBulkCourseProgramChange();
+        return d;
+    });
+}
+
+function toast(ok, msg) {
+    if (ok && typeof showToast === 'function') showToast(msg, 'success');
+    else if (!ok) alert(msg);
+}
+
+function initTabs() {
+    loadFrag('{% url "college_settings:frag_departments" %}', 'dept-tbody');
+    loadFrag('{% url "college_settings:frag_programs" %}', 'prog-tbody');
+    loadFrag('{% url "college_settings:frag_specialisations" %}', 'spec-tbody');
+    loadFrag('{% url "college_settings:frag_courses" %}', 'crs-tbody');
+    loadFrag('{% url "college_settings:frag_sections" %}', 'sec-tbody');
+    loadFrag('{% url "college_settings:frag_exam_types" %}', 'exam-tbody');
+}
+
+function applySpecFilter() {
+    const pid = document.getElementById('specFilterProgram').value;
+    const url = pid ? `{% url "college_settings:frag_specialisations" %}?program_id=${encodeURIComponent(pid)}` : '{% url "college_settings:frag_specialisations" %}';
+    loadFrag(url, 'spec-tbody');
+}
+
+let currentCourseFilter = { program_id: '', semester: '' };
+function applyCourseFilter() {
+    const pid = document.getElementById('courseFilterProgram').value;
+    const sem = document.getElementById('courseFilterSemester').value;
+    if (!pid) { alert('Please select a Program to filter.'); return; }
+    currentCourseFilter = { program_id: pid, semester: sem || '' };
+    const qs = new URLSearchParams(currentCourseFilter);
+    loadFrag(`{% url "college_settings:frag_courses" %}?${qs.toString()}`, 'crs-tbody');
+}
+function clearCourseFilter() {
+    document.getElementById('courseFilterProgram').value = '';
+    document.getElementById('courseFilterSemester').value = '';
+    currentCourseFilter = { program_id: '', semester: '' };
+    loadFrag('{% url "college_settings:frag_courses" %}', 'crs-tbody');
+}
+
+function onCaddDept() {
+    const deptId = document.getElementById('caddDept').value;
+    fetch('{% url "college_settings:api_programs_by_dept" %}?department_id=' + encodeURIComponent(deptId))
+        .then(r => r.json()).then(d => {
+            const sel = document.getElementById('caddProg');
+            sel.innerHTML = '';
+            d.programs.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.label; o.dataset.sem = p.total_semesters; sel.appendChild(o); });
+            onCaddProg();
+        });
+}
+
+function onCaddProg() {
+    const sel = document.getElementById('caddProg');
+    const opt = sel.options[sel.selectedIndex];
+    const max = opt ? parseInt(opt.dataset.sem || '6', 10) : 6;
+    document.getElementById('caddSem').max = max;
+    const pid = parseInt(sel.value, 10);
+    const box = document.getElementById('caddSpecs');
+    box.innerHTML = '';
+    (SPEC_BY_PROG[pid] || []).forEach(s => {
+        const o = document.createElement('option');
+        o.value = s.id;
+        o.textContent = s.name;
+        box.appendChild(o);
+    });
+}
+
+function toggleCaddSpec() {
+    const on = document.getElementById('caddAll').checked;
+    document.getElementById('caddSpecWrap').classList.toggle('d-none', on);
+}
+
+function filterSpecSelect(progSel, specSel) {
+    const pid = progSel.value;
+    Array.from(specSel.options).forEach(o => {
+        if (!o.value) return;
+        o.hidden = o.dataset.prog && o.dataset.prog !== pid;
+    });
+}
+
+document.getElementById('secProg')?.addEventListener('change', function () {
+    filterSpecSelect(this, document.getElementById('secSpec'));
+});
+document.getElementById('bsecProg')?.addEventListener('change', function () {
+    filterSpecSelect(this, document.getElementById('bsecSpec'));
+});
+document.getElementById('ceditProg')?.addEventListener('change', function () {
+    const sel = document.getElementById('ceditSpec');
+    filterSpecSelect(this, sel);
+});
+
+function openDeptModal() {
+    document.getElementById('deptId').value = '';
+    document.getElementById('deptName').value = '';
+    document.getElementById('deptModalTitle').innerText = 'Add department';
+    new bootstrap.Modal(document.getElementById('deptModal')).show();
+}
+function editDept(id) {
+    fetch(`{% url 'college_settings:department_edit' 0 %}`.replace('/0/', `/${id}/`)).then(r => r.json()).then(data => {
+        document.getElementById('deptId').value = id;
+        document.getElementById('deptName').value = data.name;
+        document.getElementById('deptModalTitle').innerText = 'Edit department';
+        new bootstrap.Modal(document.getElementById('deptModal')).show();
+    });
+}
+function saveDept() {
+    const id = document.getElementById('deptId').value;
+    const payload = { name: document.getElementById('deptName').value };
+    const url = id ? `{% url 'college_settings:department_edit' 0 %}`.replace('/0/', `/${id}/`) : '{% url "college_settings:department_add" %}';
+    postForm(url, payload).then(d => {
+        if (d.success) {
+            bootstrap.Modal.getInstance(document.getElementById('deptModal'))?.hide();
+            loadFrag('{% url "college_settings:frag_departments" %}', 'dept-tbody');
+            refreshReferenceFromServer();
+            toast(true, d.message);
+        } else alert(d.message);
+    });
+}
+function delDept(id, name) {
+    if (!confirm('Delete department "' + name + '"?')) return;
+    postForm(`{% url 'college_settings:department_delete' 0 %}`.replace('/0/delete/', `/${id}/delete/`), {}).then(d => {
+        if (d.success) {
+            loadFrag('{% url "college_settings:frag_departments" %}', 'dept-tbody');
+            refreshReferenceFromServer();
+            toast(true, d.message);
+        } else alert(d.message);
+    });
+}
+
+function openProgramModal() {
+    document.getElementById('progId').value = '';
+    document.getElementById('progName').value = '';
+    document.getElementById('progSemesters').value = '6';
+    document.getElementById('progType').value = 'UG';
+    document.getElementById('progTypeOther').value = '';
+    toggleProgramTypeOther();
+    document.getElementById('progModalTitle').innerText = 'Add program';
+    new bootstrap.Modal(document.getElementById('progModal')).show();
+}
+function toggleProgramTypeOther() {
+    const val = document.getElementById('progType').value;
+    const other = document.getElementById('progTypeOther');
+    other.classList.toggle('d-none', val !== '__other__');
+}
+function editProgram(id) {
+    fetch(`{% url 'college_settings:program_edit' 0 %}`.replace('/0/', `/${id}/`)).then(r => r.json()).then(data => {
+        document.getElementById('progId').value = id;
+        document.getElementById('progDeptId').value = data.department_id;
+        document.getElementById('progName').value = data.name;
+        const pt = (data.program_type || 'UG').trim();
+        if (['UG','PG','PHD'].includes(pt)) {
+            document.getElementById('progType').value = pt;
+            document.getElementById('progTypeOther').value = '';
+        } else {
+            document.getElementById('progType').value = '__other__';
+            document.getElementById('progTypeOther').value = pt;
+        }
+        toggleProgramTypeOther();
+        document.getElementById('progSemesters').value = data.total_semesters;
+        document.getElementById('progModalTitle').innerText = 'Edit program';
+        new bootstrap.Modal(document.getElementById('progModal')).show();
+    });
+}
+function saveProgram() {
+    const id = document.getElementById('progId').value;
+    const ptSel = document.getElementById('progType').value;
+    const pt = ptSel === '__other__' ? document.getElementById('progTypeOther').value : ptSel;
+    const payload = {
+        department_id: document.getElementById('progDeptId').value,
+        name: document.getElementById('progName').value,
+        program_type: (pt || 'UG'),
+        total_semesters: document.getElementById('progSemesters').value
+    };
+    const url = id ? `{% url 'college_settings:program_edit' 0 %}`.replace('/0/', `/${id}/`) : '{% url "college_settings:program_add" %}';
+    postForm(url, payload).then(d => {
+        if (d.success) {
+            bootstrap.Modal.getInstance(document.getElementById('progModal'))?.hide();
+            loadFrag('{% url "college_settings:frag_programs" %}', 'prog-tbody');
+            refreshReferenceFromServer();
+            toast(true, d.message);
+        } else alert(d.message);
+    });
+}
+function delProgram(id, name) {
+    if (!confirm('Delete program "' + name + '"?')) return;
+    postForm(`{% url 'college_settings:program_delete' 0 %}`.replace('/0/delete/', `/${id}/delete/`), {}).then(d => {
+        if (d.success) {
+            loadFrag('{% url "college_settings:frag_programs" %}', 'prog-tbody');
+            refreshReferenceFromServer();
+            toast(true, d.message);
+        } else alert(d.message);
+    });
+}
+
+function openSpecModal() {
+    document.getElementById('specId').value = '';
+    document.getElementById('specName').value = '';
+    document.getElementById('specModalTitle').innerText = 'Add specialisation';
+    new bootstrap.Modal(document.getElementById('specModal')).show();
+}
+function editSpec(id) {
+    fetch(`{% url 'college_settings:specialisation_edit' 0 %}`.replace('/0/', `/${id}/`)).then(r => r.json()).then(data => {
+        document.getElementById('specId').value = id;
+        document.getElementById('specProgId').value = data.program_id;
+        document.getElementById('specName').value = data.name;
+        document.getElementById('specModalTitle').innerText = 'Edit specialisation';
+        new bootstrap.Modal(document.getElementById('specModal')).show();
+    });
+}
+function saveSpec() {
+    const id = document.getElementById('specId').value;
+    const payload = { program_id: document.getElementById('specProgId').value, name: document.getElementById('specName').value };
+    const url = id ? `{% url 'college_settings:specialisation_edit' 0 %}`.replace('/0/', `/${id}/`) : '{% url "college_settings:specialisation_add" %}';
+    postForm(url, payload).then(d => {
+        if (d.success) {
+            bootstrap.Modal.getInstance(document.getElementById('specModal'))?.hide();
+            loadFrag('{% url "college_settings:frag_specialisations" %}', 'spec-tbody');
+            refreshReferenceFromServer();
+            toast(true, d.message);
+        } else alert(d.message);
+    });
+}
+function delSpec(id, name) {
+    if (!confirm('Delete "' + name + '"?')) return;
+    postForm(`{% url 'college_settings:specialisation_delete' 0 %}`.replace('/0/delete/', `/${id}/delete/`), {}).then(d => {
+        if (d.success) {
+            loadFrag('{% url "college_settings:frag_specialisations" %}', 'spec-tbody');
+            refreshReferenceFromServer();
+            toast(true, d.message);
+        } else alert(d.message);
+    });
+}
+
+function openCourseAddModal() {
+    document.getElementById('caddAll').checked = true;
+    toggleCaddSpec();
+    onCaddDept();
+    document.getElementById('caddCode').value = '';
+    document.getElementById('caddName').value = '';
+    new bootstrap.Modal(document.getElementById('courseAddModal')).show();
+}
+function toggleCourseFilterPanel() {
+    const filter = document.getElementById('courseFilterPanel');
+    const bulk = document.getElementById('courseBulkPanel');
+    const bFilter = document.getElementById('toggleCourseFilterBtn');
+    const bBulk = document.getElementById('toggleCourseBulkBtn');
+    const opening = filter.classList.contains('d-none');
+    if (opening) {
+        filter.classList.remove('d-none');
+        bulk.classList.add('d-none');
+        bFilter.textContent = 'Close Filter';
+        bFilter.classList.add('btn-secondary');
+        bBulk.textContent = 'Bulk Add';
+        bBulk.classList.remove('btn-secondary');
+    } else {
+        filter.classList.add('d-none');
+        bFilter.textContent = 'Filter';
+        bFilter.classList.remove('btn-secondary');
+    }
+}
+function toggleCourseBulkPanel() {
+    const filter = document.getElementById('courseFilterPanel');
+    const bulk = document.getElementById('courseBulkPanel');
+    const bFilter = document.getElementById('toggleCourseFilterBtn');
+    const bBulk = document.getElementById('toggleCourseBulkBtn');
+    const opening = bulk.classList.contains('d-none');
+    if (opening) {
+        bulk.classList.remove('d-none');
+        filter.classList.add('d-none');
+        bBulk.textContent = 'Close Bulk';
+        bBulk.classList.add('btn-secondary');
+        bFilter.textContent = 'Filter';
+        bFilter.classList.remove('btn-secondary');
+    } else {
+        bulk.classList.add('d-none');
+        bBulk.textContent = 'Bulk Add';
+        bBulk.classList.remove('btn-secondary');
+    }
+}
+function saveCourseAdd() {
+    const applyAll = document.getElementById('caddAll').checked;
+    const data = {
+        program_id: document.getElementById('caddProg').value,
+        semester: document.getElementById('caddSem').value,
+        code: document.getElementById('caddCode').value,
+        name: document.getElementById('caddName').value,
+        course_type: 'core',
+        apply_all: applyAll ? '1' : '0'
+    };
+    const box = document.getElementById('caddSpecs');
+    if (!applyAll) {
+        Array.from(box.selectedOptions).forEach(o => {
+            data['specialisation_ids'] = data['specialisation_ids'] || [];
+            data['specialisation_ids'].push(o.value);
+        });
+    }
+    const body = new URLSearchParams();
+    Object.keys(data).forEach(k => {
+        if (k === 'specialisation_ids') (data[k] || []).forEach(v => body.append('specialisation_ids', v));
+        else body.append(k, data[k]);
+    });
+    fetch('{% url "college_settings:course_add" %}', { method: 'POST', headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/x-www-form-urlencoded' }, body })
+        .then(r => r.json()).then(d => {
+            if (d.success) { bootstrap.Modal.getInstance(document.getElementById('courseAddModal'))?.hide(); loadFrag('{% url "college_settings:frag_courses" %}', 'crs-tbody'); toast(true, d.message); }
+            else alert(d.message);
+        });
+}
+
+function editCourse(id) {
+    fetch(`{% url 'college_settings:course_edit' 0 %}`.replace('/0/', `/${id}/`)).then(r => r.json()).then(data => {
+        document.getElementById('ceditId').value = id;
+        document.getElementById('ceditProg').value = data.program_id;
+        document.getElementById('ceditSem').value = data.semester;
+        document.getElementById('ceditCode').value = data.code;
+        document.getElementById('ceditName').value = data.name;
+        filterSpecSelect(document.getElementById('ceditProg'), document.getElementById('ceditSpec'));
+        document.getElementById('ceditSpec').value = data.specialisation_id || '';
+        new bootstrap.Modal(document.getElementById('courseEditModal')).show();
+    });
+}
+function saveCourseEdit() {
+    const id = document.getElementById('ceditId').value;
+    const payload = {
+        program_id: document.getElementById('ceditProg').value,
+        semester: document.getElementById('ceditSem').value,
+        code: document.getElementById('ceditCode').value,
+        name: document.getElementById('ceditName').value,
+        course_type: 'core',
+        specialisation_id: document.getElementById('ceditSpec').value
+    };
+    postForm(`{% url 'college_settings:course_edit' 0 %}`.replace('/0/', `/${id}/`), payload).then(d => {
+        if (d.success) { bootstrap.Modal.getInstance(document.getElementById('courseEditModal'))?.hide(); loadFrag('{% url "college_settings:frag_courses" %}', 'crs-tbody'); toast(true, d.message); }
+        else alert(d.message);
+    });
+}
+function delCourse(id, name) {
+    if (!confirm('Delete course "' + name + '"?')) return;
+    postForm(`{% url 'college_settings:course_delete' 0 %}`.replace('/0/delete/', `/${id}/delete/`), {}).then(d => {
+        if (d.success) {
+            const qs = currentCourseFilter.program_id ? ('?' + new URLSearchParams(currentCourseFilter).toString()) : '';
+            loadFrag(`{% url "college_settings:frag_courses" %}${qs}`, 'crs-tbody');
+            toast(true, d.message);
+        }
+        else alert(d.message);
+    });
+}
+
+function onBulkCourseProgramChange() {
+    const sel = document.getElementById('bulkCourseProgram');
+    const opt = sel.options[sel.selectedIndex];
+    const max = opt ? parseInt(opt.dataset.sem || '6', 10) : 6;
+    const semSel = document.getElementById('bulkCourseSemester');
+    semSel.innerHTML = '';
+    for (let i=1;i<=max;i++) {
+        const o = document.createElement('option');
+        o.value = String(i);
+        o.textContent = String(i);
+        semSel.appendChild(o);
+    }
+    filterSpecSelect(sel, document.getElementById('bulkCourseSpec'));
+}
+
+function bulkAddCourseRow() {
+    const tb = document.getElementById('bulkCourseRows');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm bulkCourseCode"></td>
+        <td><input type="text" class="form-control form-control-sm bulkCourseName" required></td>
+        <td class="text-end"><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('tr').remove()">✖</button></td>
+    `;
+    tb.appendChild(tr);
+}
+
+function saveBulkCourses() {
+    const feedback = document.getElementById('bulkCourseFeedback');
+    feedback.textContent = '';
+    const items = [];
+    document.querySelectorAll('#bulkCourseRows tr').forEach(tr => {
+        const code = tr.querySelector('.bulkCourseCode').value.trim();
+        const name = tr.querySelector('.bulkCourseName').value.trim();
+        if (name) items.push({ code, name });
+    });
+    if (!items.length) { feedback.textContent = 'Add at least one row.'; return; }
+    const payload = {
+        program_id: document.getElementById('bulkCourseProgram').value,
+        semester: document.getElementById('bulkCourseSemester').value,
+        specialisation_id: document.getElementById('bulkCourseSpec').value,
+        course_type: document.getElementById('bulkCourseType').value,
+        items_json: JSON.stringify(items)
+    };
+    postForm('{% url "college_settings:course_bulk_add" %}', payload).then(d => {
+        if (d.success) {
+            feedback.textContent = `Created ${d.created} course(s). Failed: ${d.failed}.`;
+            document.getElementById('bulkCourseRows').innerHTML = '';
+            bulkAddCourseRow();
+            const qs = currentCourseFilter.program_id ? ('?' + new URLSearchParams(currentCourseFilter).toString()) : '';
+            loadFrag(`{% url "college_settings:frag_courses" %}${qs}`, 'crs-tbody');
+        } else {
+            feedback.textContent = d.message || 'Bulk save failed.';
+        }
+    });
+}
+
+function openSectionModal() {
+    document.getElementById('secId').value = '';
+    document.getElementById('secName').value = '';
+    document.getElementById('secModalTitle').innerText = 'Add section';
+    filterSpecSelect(document.getElementById('secProg'), document.getElementById('secSpec'));
+    new bootstrap.Modal(document.getElementById('secModal')).show();
+}
+function openBulkSectionModal() {
+    filterSpecSelect(document.getElementById('bsecProg'), document.getElementById('bsecSpec'));
+    document.getElementById('bsecNames').value = '';
+    new bootstrap.Modal(document.getElementById('bulkSecModal')).show();
+}
+function editSection(id) {
+    fetch(`{% url 'college_settings:section_edit' 0 %}`.replace('/0/', `/${id}/`)).then(r => r.json()).then(data => {
+        document.getElementById('secId').value = id;
+        document.getElementById('secProg').value = data.program_id;
+        filterSpecSelect(document.getElementById('secProg'), document.getElementById('secSpec'));
+        document.getElementById('secSpec').value = data.specialisation_id || '';
+        document.getElementById('secSem').value = data.semester;
+        document.getElementById('secName').value = data.name;
+        document.getElementById('secModalTitle').innerText = 'Edit section';
+        new bootstrap.Modal(document.getElementById('secModal')).show();
+    });
+}
+function saveSection() {
+    const id = document.getElementById('secId').value;
+    const payload = {
+        program_id: document.getElementById('secProg').value,
+        specialisation_id: document.getElementById('secSpec').value,
+        semester: document.getElementById('secSem').value,
+        name: document.getElementById('secName').value
+    };
+    const url = id ? `{% url 'college_settings:section_edit' 0 %}`.replace('/0/', `/${id}/`) : '{% url "college_settings:section_add" %}';
+    postForm(url, payload).then(d => {
+        if (d.success) { bootstrap.Modal.getInstance(document.getElementById('secModal'))?.hide(); loadFrag('{% url "college_settings:frag_sections" %}', 'sec-tbody'); toast(true, d.message); }
+        else alert(d.message);
+    });
+}
+function saveBulkSec() {
+    const payload = {
+        program_id: document.getElementById('bsecProg').value,
+        specialisation_id: document.getElementById('bsecSpec').value,
+        semester: document.getElementById('bsecSem').value,
+        names: document.getElementById('bsecNames').value
+    };
+    postForm('{% url "college_settings:section_bulk_add" %}', payload).then(d => {
+        if (d.success) { bootstrap.Modal.getInstance(document.getElementById('bulkSecModal'))?.hide(); loadFrag('{% url "college_settings:frag_sections" %}', 'sec-tbody'); toast(true, d.message); }
+        else alert(d.message);
+    });
+}
+function delSection(id, name) {
+    if (!confirm('Delete section "' + name + '"?')) return;
+    postForm(`{% url 'college_settings:section_delete' 0 %}`.replace('/0/delete/', `/${id}/delete/`), {}).then(d => {
+        if (d.success) { loadFrag('{% url "college_settings:frag_sections" %}', 'sec-tbody'); toast(true, d.message); }
+        else alert(d.message);
+    });
+}
+
+function openExamModal() {
+    document.getElementById('examId').value = '';
+    document.getElementById('examName').value = '';
+    document.getElementById('examProgramType').value = '';
+    document.getElementById('examHours').value = '0';
+    document.getElementById('examMinutes').value = '0';
+    document.getElementById('examModalTitle').innerText = 'Add exam type';
+    new bootstrap.Modal(document.getElementById('examModal')).show();
+}
+function editExam(id) {
+    fetch(`{% url 'college_settings:exam_type_edit' 0 %}`.replace('/0/', `/${id}/`)).then(r => r.json()).then(data => {
+        document.getElementById('examId').value = id;
+        document.getElementById('examName').value = data.name;
+        document.getElementById('examProgramType').value = data.exam_program_type || '';
+        document.getElementById('examHours').value = String(data.duration_hours || 0);
+        document.getElementById('examMinutes').value = String(data.duration_minutes || 0);
+        document.getElementById('examModalTitle').innerText = 'Edit exam type';
+        new bootstrap.Modal(document.getElementById('examModal')).show();
+    });
+}
+function saveExam() {
+    const id = document.getElementById('examId').value;
+    const payload = {
+        name: document.getElementById('examName').value,
+        exam_program_type: document.getElementById('examProgramType').value,
+        duration_hours: document.getElementById('examHours').value,
+        duration_minutes: document.getElementById('examMinutes').value
+    };
+    const url = id ? `{% url 'college_settings:exam_type_edit' 0 %}`.replace('/0/', `/${id}/`) : '{% url "college_settings:exam_type_add" %}';
+    postForm(url, payload).then(d => {
+        if (d.success) { bootstrap.Modal.getInstance(document.getElementById('examModal'))?.hide(); loadFrag('{% url "college_settings:frag_exam_types" %}', 'exam-tbody'); toast(true, d.message); }
+        else alert(d.message);
+    });
+}
+function delExam(id, name) {
+    if (!confirm('Delete exam type "' + name + '"?')) return;
+    postForm(`{% url 'college_settings:exam_type_delete' 0 %}`.replace('/0/delete/', `/${id}/delete/`), {}).then(d => {
+        if (d.success) { loadFrag('{% url "college_settings:frag_exam_types" %}', 'exam-tbody'); toast(true, d.message); }
+        else alert(d.message);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    initTabs();
+    onBulkCourseProgramChange();
+    bulkAddCourseRow();
+    refreshReferenceFromServer();
+    const map = { 'departments': 'tab-dept', 'programs': 'tab-prog', 'specialisations': 'tab-spec', 'courses': 'tab-crs', 'sections': 'tab-sec', 'exam-types': 'tab-exam' };
+    const h = (location.hash || '').replace('#', '');
+    const tabId = map[h];
+    if (tabId) { const el = document.getElementById(tabId); if (el) new bootstrap.Tab(el).show(); }
+});
+
+function openCourseImportModal() {
+    document.getElementById('courseExcelFile').value = '';
+    document.getElementById('courseImportResult').textContent = '';
+    new bootstrap.Modal(document.getElementById('courseImportModal')).show();
+}
+
+document.getElementById('courseImportForm')?.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const file = document.getElementById('courseExcelFile').files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    fetch('{% url "college_settings:courses_import" %}', { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd })
+        .then(r => r.json())
+        .then(d => {
+            const el = document.getElementById('courseImportResult');
+            if (d.success) {
+                el.textContent = `Imported: ${d.imported}. Failed: ${d.failed}.` + (d.failed ? ' (See errors in console)' : '');
+                if (d.errors && d.errors.length) console.log('Course import errors', d.errors);
+                const qs = currentCourseFilter.program_id ? ('?' + new URLSearchParams(currentCourseFilter).toString()) : '';
+                loadFrag(`{% url "college_settings:frag_courses" %}${qs}`, 'crs-tbody');
+            } else {
+                el.textContent = d.message || 'Import failed.';
+                if (d.expected) console.log('Expected headers', d.expected, 'found', d.found);
+            }
+        });
+});
+</script>
+{% endblock %}

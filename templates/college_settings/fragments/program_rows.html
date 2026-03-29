@@ -1,0 +1,16 @@
+{% for p in programs %}
+<tr style="border-bottom: 1px solid var(--border-subtle);">
+    <td class="fw-bold">{{ p.name }}</td>
+    <td>{{ p.department.name }}</td>
+    <td>{{ p.program_type|default:"—" }}</td>
+    <td>{{ p.total_semesters }}</td>
+    <td class="text-end">
+        <button type="button" class="btn btn-link btn-sm text-primary p-0 me-2" onclick="editProgram({{ p.id }})">Edit</button>
+        <button type="button" class="btn btn-link btn-sm p-0" style="color: var(--accent);" onclick="delProgram({{ p.id }}, '{{ p.name|escapejs }}')">Delete</button>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="5" class="text-secondary text-center py-4">No programs yet.</td>
+</tr>
+{% endfor %}

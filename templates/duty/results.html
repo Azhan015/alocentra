@@ -17,18 +17,32 @@
 
 <div class="card bg-surface border-subtle radius-card shadow-card p-4"
     style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+    {% if has_shortage %}
+    <div class="alert alert-warning mb-3">
+        <div class="fw-bold mb-1">Warning: Some rooms are unassigned due to faculty shortage.</div>
+        <div class="small mb-2">
+            The following date/room pairs could not be fully staffed:
+            {% for d, room_no in shortage_pairs %}
+            {{ d|date:"d M" }} (Room {{ room_no }}){% if not forloop.last %}, {% endif %}
+            {% endfor %}
+        </div>
+        <a href="{% url 'duty:wizard_step2' %}?session_id={{ session.id }}" class="btn btn-sm btn-outline-dark">Go Back</a>
+    </div>
+    {% else %}
+    <div class="alert alert-success mb-3">All selected dates and rooms are fully assigned.</div>
+    {% endif %}
 
     <div id="printArea" class="bg-white p-4 rounded" style="color: #000;">
         <div class="text-center mb-4 d-none d-print-block" id="printHeader">
             <h2 class="fw-bold fs-4 mb-1">AloCentra College of Engineering</h2>
             <h3 class="fw-bold fs-5 mb-2">Exam Duty Allotment</h3>
             <p class="mb-1"><strong>Session:</strong> {{ session.title }}</p>
-            <p class="mb-1"><strong>Duration:</strong> {{ session.exam_type.duration_hours }}</p>
+            <p class="mb-1"><strong>Duration:</strong> {{ session.exam_type.duration_hours }}h {{ session.exam_type.duration_minutes }}m</p>
         </div>
 
         <div class="table-responsive">
-            <table class="table table-bordered table-sm" id="resultsTable" style="border-color: #dee2e6;">
-                <thead style="background: #f8f9fa;">
+            <table class="table table-bordered table-sm text-dark" id="resultsTable" style="border-color: #101111; color: #212529;">
+                <thead style="background: #141313;">
                     <tr class="text-uppercase small fw-bold">
                         <th>Date</th>
                         <th>Room No</th>
@@ -43,7 +57,7 @@
                     <tr>
                         <td>{{ res.date|date:"d M Y" }}</td>
                         <td>{{ res.room.room_no }}</td>
-                        <td class="fw-bold">{{ res.faculty.name }}</td>
+                        <td class="fw-bold text-dark">{{ res.faculty.name }}</td>
                         <td>{{ res.faculty.designation }}</td>
                         <td>
                             {% if res.is_reliever %}

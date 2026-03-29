@@ -34,8 +34,7 @@
                     <tr style="border-bottom: 1px solid var(--border-subtle);">
                         <td style="padding-left: 20px;">
                             <input type="checkbox" name="rooms" value="{{ room.id }}"
-                                class="form-check-input row-checkbox" {% if room.id in selected_room_ids %}checked{%
-                                endif %}>
+                                class="form-check-input row-checkbox" {% if room.id in selected_room_ids %}checked{% endif %}>
                         </td>
                         <td class="fw-bold text-white">{{ room.room_no }}</td>
                         <td class="text-white">{{ room.capacity }}</td>

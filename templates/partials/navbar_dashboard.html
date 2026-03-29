@@ -54,10 +54,12 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark"
                         style="background: var(--bg-elevated); border-color: var(--border-subtle);">
-                        <li><a class="dropdown-item" href="#">Departments</a></li>
-                        <li><a class="dropdown-item" href="#">Courses</a></li>
-                        <li><a class="dropdown-item" href="#">Subjects</a></li>
-                        <li><a class="dropdown-item" href="#">Exam Types</a></li>
+                        <li><a class="dropdown-item" href="{% url 'college_settings:index' %}#departments">Departments</a></li>
+                        <li><a class="dropdown-item" href="{% url 'college_settings:index' %}#programs">Programs</a></li>
+                        <li><a class="dropdown-item" href="{% url 'college_settings:index' %}#specialisations">Specialisations</a></li>
+                        <li><a class="dropdown-item" href="{% url 'college_settings:index' %}#courses">Courses</a></li>
+                        <li><a class="dropdown-item" href="{% url 'college_settings:index' %}#sections">Sections</a></li>
+                        <li><a class="dropdown-item" href="{% url 'college_settings:index' %}#exam-types">Exam types</a></li>
                     </ul>
                 </li>
                 {% endif %}
@@ -126,6 +128,10 @@
             {% if permissions.can_assign_duty %}
             <a href="/duty/assign/" class="list-group-item list-group-item-action py-3 border-bottom text-white"><i
                     class="bi bi-person-check me-2"></i> Assign Duty</a>
+            {% endif %}
+            {% if user.is_coe or permissions.can_edit_timetable %}
+            <a href="{% url 'college_settings:index' %}" class="list-group-item list-group-item-action py-3 border-bottom text-white"><i
+                    class="bi bi-gear me-2"></i> Settings</a>
             {% endif %}
             {% if user.is_coe or permissions.can_manage_users %}
             <a href="/users/" class="list-group-item list-group-item-action py-3 border-bottom text-white"><i

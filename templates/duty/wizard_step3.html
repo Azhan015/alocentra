@@ -29,6 +29,7 @@
                         <th style="width: 50px; padding-left: 20px;"><input type="checkbox" id="selectAll"
                                 class="form-check-input"></th>
                         <th>Name</th>
+                        <th>Designation</th>
                         <th>Department</th>
                         <th style="width: 250px;">Relieves X Rooms</th>
                     </tr>
@@ -38,10 +39,10 @@
                     <tr style="border-bottom: 1px solid var(--border-subtle);" class="align-middle">
                         <td style="padding-left: 20px;">
                             <input type="checkbox" name="relievers" value="{{ fac.id }}"
-                                class="form-check-input row-checkbox" onchange="toggleCountInput(this, {{ fac.id }})" {%
-                                if fac.id in reliever_assignments %}checked{% endif %}>
+                                class="form-check-input row-checkbox" onchange="toggleCountInput(this, {{ fac.id }})" {% if fac.id in reliever_assignments %}checked{% endif %}>
                         </td>
                         <td class="fw-bold text-white">{{ fac.name }}</td>
+                        <td class="text-secondary">{{ fac.designation|default:"—" }}</td>
                         <td class="text-secondary">{{ fac.department }}</td>
                         <td>
                             <div class="d-flex align-items-center" style="gap: 12px;">
@@ -49,15 +50,14 @@
                                 <input type="number" name="reliever_rooms_{{ fac.id }}" id="reliever_rooms_{{ fac.id }}"
                                     class="form-control form-control-sm bg-elevated border-subtle text-white"
                                     style="width: 70px;" min="1" max="20"
-                                    value="{{ reliever_assignments|get_item:fac.id|default:5 }}" {% if fac.id not in
-                                    reliever_assignments %}disabled{% endif %}>
+                                    value="{{ reliever_assignments|get_item:fac.id|default:5 }}" {% if fac.id not in reliever_assignments %}disabled{% endif %}>
                                 <span class="text-secondary small">rooms</span>
                             </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center text-secondary py-4">All available faculty are already
+                        <td colspan="5" class="text-center text-secondary py-4">All available faculty are already
                             assigned as standard invigilators.</td>
                     </tr>
                     {% endfor %}

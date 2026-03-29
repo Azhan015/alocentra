@@ -7,10 +7,9 @@
             schedule{% endif %}</p>
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-outline-custom" onclick="window.print()"><i class="bi bi-printer me-2"></i>
-            Print</button>
-        <button class="btn btn-primary-custom" onclick="saveTimetable()"><i class="bi bi-save me-2"></i> Save
-            Timetable</button>
+        <button class="btn btn-outline-custom" onclick="exportExcel()"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel</button>
+        <button class="btn btn-outline-custom" onclick="exportPDF()"><i class="bi bi-file-earmark-pdf me-2"></i>Export PDF</button>
+        <button class="btn btn-primary-custom" onclick="saveTimetable()"><i class="bi bi-save me-2"></i> Save Timetable</button>
     </div>
 </div>
 
@@ -21,20 +20,43 @@
             <label class="form-label text-secondary small text-uppercase fw-bold">Exam Type</label>
             <select id="exam_type" class="form-select bg-elevated border-subtle text-white">
                 {% for et in exam_types %}
-                <option value="{{ et.id }}" {% if timetable and timetable.exam_type_id==et.id %}selected{% endif %}>{{
-                    et.name }}</option>
+                <option value="{{ et.id }}"{% if timetable and timetable.exam_type_id == et.id %} selected{% endif %}>{{ et.name }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="col-md-3">
             <label class="form-label text-secondary small text-uppercase fw-bold">From Date</label>
-            <input type="date" id="date_from" class="form-control bg-elevated border-subtle text-white"
-                value="{{ timetable.date_from|date:'Y-m-d' }}" onchange="generateGrid()">
+            <input type="date" id="date_from" class="form-control bg-elevated border-subtle text-white" value="{{ timetable.date_from|date:'Y-m-d' }}">
         </div>
         <div class="col-md-3">
             <label class="form-label text-secondary small text-uppercase fw-bold">To Date</label>
-            <input type="date" id="date_to" class="form-control bg-elevated border-subtle text-white"
-                value="{{ timetable.date_to|date:'Y-m-d' }}" onchange="generateGrid()">
+            <input type="date" id="date_to" class="form-control bg-elevated border-subtle text-white" value="{{ timetable.date_to|date:'Y-m-d' }}">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="button" class="btn btn-outline-custom w-100" onclick="openSelectionStep()">Generate Grid</button>
+        </div>
+    </div>
+    <div id="dateError" class="text-danger small mt-2 d-none"></div>
+</div>
+
+<div class="card bg-surface border-subtle radius-card shadow-card p-4 mb-4 d-none"
+    id="selectionPanel"
+    style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+    <div class="d-flex flex-wrap justify-content-between align-items-end mb-3 gap-2">
+        <div>
+            <h5 class="m-0">Filter Program + Semester Rows</h5>
+            <div class="small text-secondary">Select programs and semesters, then confirm.</div>
+        </div>
+        <div class="d-flex gap-2 align-items-end">
+            <div>
+                <label class="form-label small text-secondary mb-1">Programs</label>
+                <select id="programMultiSelect" class="form-select form-select-sm" multiple style="min-width: 260px; height: 110px;"></select>
+            </div>
+            <div>
+                <label class="form-label small text-secondary mb-1">Semesters</label>
+                <select id="semesterMultiSelect" class="form-select form-select-sm" multiple style="min-width: 140px; height: 110px;"></select>
+            </div>
+            <button class="btn btn-primary-custom btn-sm" type="button" onclick="confirmSelection()">Confirm</button>
         </div>
     </div>
 </div>
@@ -42,122 +64,228 @@
 <div class="card bg-surface border-subtle radius-card shadow-card p-4 overflow-auto"
     style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
     <table class="table table-bordered table-dark text-center align-middle" id="timetableGrid">
-        <thead id="gridHead" style="background: var(--bg-elevated);">
-            <!-- Headers generated via JS -->
-        </thead>
-        <tbody id="gridBody">
-            <!-- Rows generated via JS -->
-        </tbody>
+        <thead id="gridHead" style="background: var(--bg-elevated);"></thead>
+        <tbody id="gridBody"></tbody>
     </table>
 </div>
 
+<div id="dateContextMenu" class="d-none">
+    <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="markNoExam()">No Exam</button>
+</div>
+
 <script>
-    const courses = [
-        {% for c in courses %}
-    { id: { { c.id } }, name: '{{ c.name|escapejs }}', section: '{{ c.section|escapejs }}' },
-    {% endfor %}
-    ];
-    const allSubjects = JSON.parse('{{ subjects_json|escapejs }}');
-    const existingCells = JSON.parse('{{ existing_cells_json|escapejs }}');
+    const allGridRows = {{ grid_rows_json|safe }};
+    const academicCourses = {{ academic_courses_json|safe }};
+    const existingCells = {{ existing_cells_json|safe }};
+    let selectedRowKeys = new Set();
+    let removedDates = new Set();
+    let activeDates = [];
+    let selectedRows = [];
+    let contextDate = null;
+    const dateFromInput = document.getElementById('date_from');
+    const dateToInput = document.getElementById('date_to');
+    const dateError = document.getElementById('dateError');
+    const selectionPanel = document.getElementById('selectionPanel');
 
-    function getSubjectsForCourse(courseId) {
-        return allSubjects.filter(s => s.course_id == courseId);
+    function coursesForProgramSemester(programId, semester) {
+        const pid = parseInt(programId, 10);
+        const sem = parseInt(semester, 10);
+        return academicCourses.filter(c => parseInt(c.program_id, 10) === pid && parseInt(c.semester, 10) === sem);
     }
-
-    function getExistingSubject(courseId, dateStr) {
-        const cell = existingCells.find(c => c.course_id == courseId && c.date === dateStr);
-        return cell ? cell.subject_id : "";
+    function getExistingCourseId(programId, semester, dateStr) {
+        const pid = parseInt(programId, 10);
+        const sem = parseInt(semester, 10);
+        const cell = existingCells.find(
+            c => parseInt(c.program_id, 10) === pid && parseInt(c.semester, 10) === sem && c.date === dateStr
+        );
+        return cell && cell.course_id ? String(cell.course_id) : '';
     }
-
-    function generateGrid() {
-        const dateFrom = document.getElementById('date_from').value;
-        const dateTo = document.getElementById('date_to').value;
-        const thead = document.getElementById('gridHead');
-        const tbody = document.getElementById('gridBody');
-
-        thead.innerHTML = '';
-        tbody.innerHTML = '';
-
-        if (!dateFrom || !dateTo || new Date(dateFrom) > new Date(dateTo)) return;
-
-        let start = new Date(dateFrom);
-        let end = new Date(dateTo);
-        let dates = [];
-        let d = new Date(start);
-
-        // Generate headers (Dates)
-        let headerRow = document.createElement('tr');
-        let emptyTh = document.createElement('th');
-        emptyTh.innerText = 'Course \\ Date';
-        emptyTh.style.minWidth = '200px';
-        headerRow.appendChild(emptyTh);
-
+    function showDateError(msg) {
+        dateError.textContent = msg || '';
+        dateError.classList.toggle('d-none', !msg);
+    }
+    function toDateStringLocal(dt) {
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const d = String(dt.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    function validateDateInputs() {
+        const df = dateFromInput.value;
+        const dt = dateToInput.value;
+        if (!df || !dt) {
+            showDateError('Please select both Start Date and End Date.');
+            return false;
+        }
+        if (new Date(df) > new Date(dt)) {
+            showDateError('End Date cannot be before Start Date.');
+            return false;
+        }
+        showDateError('');
+        return true;
+    }
+    function buildDateRange() {
+        const dates = [];
+        let d = new Date(dateFromInput.value);
+        const end = new Date(dateToInput.value);
         while (d <= end) {
-            // Skip Sundays if needed
             if (d.getDay() !== 0) {
-                let dateStr = d.toISOString().split('T')[0];
-                dates.push(dateStr);
-                let th = document.createElement('th');
-                th.innerHTML = `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}<br><small class="text-secondary">${d.toLocaleString('default', { weekday: 'short' })}</small>`;
-                th.style.minWidth = '180px';
-                headerRow.appendChild(th);
+                const ds = toDateStringLocal(d);
+                if (!removedDates.has(ds)) dates.push(ds);
             }
             d.setDate(d.getDate() + 1);
         }
-        thead.appendChild(headerRow);
-
-        // Generate rows (Courses)
-        courses.forEach(course => {
-            let tr = document.createElement('tr');
-            let tdName = document.createElement('td');
-            tdName.className = "fw-bold text-start";
-            tdName.innerHTML = `${course.name} ${course.section ? '<span class="badge bg-secondary">' + course.section + '</span>' : ''}`;
-            tr.appendChild(tdName);
-
-            let courseSubjects = getSubjectsForCourse(course.id);
-            let optionsHtml = `<option value="">---</option>`;
-            courseSubjects.forEach(sub => {
-                optionsHtml += `<option value="${sub.id}">${sub.code ? sub.code + ' - ' : ''}${sub.name}</option>`;
+        return dates;
+    }
+    function resetGridOnly() {
+        document.getElementById('gridHead').innerHTML = '';
+        document.getElementById('gridBody').innerHTML = '';
+    }
+    function openSelectionStep() {
+        resetGridOnly();
+        if (!validateDateInputs()) return;
+        hydrateCompactSelectors();
+        selectionPanel.classList.remove('d-none');
+    }
+    function hydrateCompactSelectors() {
+        const pSel = document.getElementById('programMultiSelect');
+        const sSel = document.getElementById('semesterMultiSelect');
+        const programMap = new Map();
+        const semSet = new Set();
+        allGridRows.forEach(r => {
+            programMap.set(String(r.program_id), r.program_name);
+            semSet.add(String(r.semester));
+        });
+        pSel.innerHTML = '';
+        Array.from(programMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+            const o = document.createElement('option');
+            o.value = id;
+            o.textContent = name;
+            const previously = selectedRows.some(x => String(x.program_id) === id);
+            o.selected = selectedRows.length ? previously : true;
+            pSel.appendChild(o);
+        });
+        sSel.innerHTML = '';
+        Array.from(semSet).sort((a, b) => Number(a) - Number(b)).forEach(sem => {
+            const o = document.createElement('option');
+            o.value = sem;
+            o.textContent = `Sem ${sem}`;
+            const previously = selectedRows.some(x => String(x.semester) === sem);
+            o.selected = selectedRows.length ? previously : true;
+            sSel.appendChild(o);
+        });
+    }
+    function confirmSelection() {
+        const programs = Array.from(document.getElementById('programMultiSelect').selectedOptions).map(o => o.value);
+        const semesters = Array.from(document.getElementById('semesterMultiSelect').selectedOptions).map(o => o.value);
+        if (!programs.length || !semesters.length) {
+            showDateError('Select at least one Program + Semester row.');
+            return;
+        }
+        selectedRows = allGridRows.filter(
+            r => programs.includes(String(r.program_id)) && semesters.includes(String(r.semester))
+        );
+        selectedRowKeys = new Set(selectedRows.map(r => r.row_key));
+        showDateError('');
+        renderGrid();
+    }
+    function updateCellDisplay(selectEl) {
+        selectEl.classList.toggle('muted-empty', !selectEl.value);
+    }
+    function renderGrid() {
+        if (!validateDateInputs()) return;
+        if (!selectedRows.length) return;
+        resetGridOnly();
+        const thead = document.getElementById('gridHead');
+        const tbody = document.getElementById('gridBody');
+        activeDates = buildDateRange();
+        const headerRow = document.createElement('tr');
+        const firstTh = document.createElement('th');
+        firstTh.innerText = 'Program';
+        firstTh.style.minWidth = '220px';
+        headerRow.appendChild(firstTh);
+        activeDates.forEach(dateStr => {
+            const d = new Date(dateStr + 'T00:00:00');
+            const th = document.createElement('th');
+            th.dataset.date = dateStr;
+            th.style.minWidth = '180px';
+            th.innerHTML = `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}<br><small class="text-secondary">${d.toLocaleString('default', { weekday: 'short' })}</small>`;
+            th.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+                contextDate = dateStr;
+                showContextMenu(e.clientX, e.clientY);
             });
-
-            dates.forEach(dateStr => {
-                let td = document.createElement('td');
-                let existingSubId = getExistingSubject(course.id, dateStr);
-
-                let select = document.createElement('select');
-                select.className = "form-select form-select-sm bg-elevated border-subtle text-white custom-cell-select";
-                select.dataset.course = course.id;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        selectedRows.forEach(row => {
+            const tr = document.createElement('tr');
+            const tdName = document.createElement('td');
+            tdName.className = 'fw-bold text-start';
+            tdName.innerHTML = `${row.department_name} — ${row.program_name} <span class="badge bg-secondary">Sem ${row.semester}</span>`;
+            tr.appendChild(tdName);
+            const rowCourses = coursesForProgramSemester(row.program_id, row.semester);
+            let optionsHtml = '<option value="">--</option>';
+            rowCourses.forEach(c => {
+                const label = (c.code ? c.code + ' — ' : '') + c.name;
+                optionsHtml += `<option value="${c.id}">${label}</option>`;
+            });
+            activeDates.forEach(dateStr => {
+                const td = document.createElement('td');
+                const existingId = getExistingCourseId(row.program_id, row.semester, dateStr);
+                const select = document.createElement('select');
+                select.className = 'form-select form-select-sm bg-elevated border-subtle text-white custom-cell-select';
+                select.dataset.programId = row.program_id;
+                select.dataset.semester = row.semester;
                 select.dataset.date = dateStr;
                 select.innerHTML = optionsHtml;
-
-                if (existingSubId) select.value = existingSubId;
-
+                if (existingId) select.value = existingId;
+                updateCellDisplay(select);
+                select.addEventListener('change', () => updateCellDisplay(select));
                 td.appendChild(select);
                 tr.appendChild(td);
             });
-
             tbody.appendChild(tr);
         });
     }
-
+    function showContextMenu(x, y) {
+        const m = document.getElementById('dateContextMenu');
+        m.style.left = `${x}px`;
+        m.style.top = `${y}px`;
+        m.classList.remove('d-none');
+    }
+    function hideContextMenu() {
+        document.getElementById('dateContextMenu').classList.add('d-none');
+    }
+    function markNoExam() {
+        if (contextDate) {
+            removedDates.add(contextDate);
+            renderGrid();
+        }
+        hideContextMenu();
+    }
     function saveTimetable() {
+        if (!validateDateInputs()) return;
+        if (!selectedRows.length) {
+            showDateError('Please generate grid and confirm Program + Semester selection.');
+            return;
+        }
         const payload = {
             exam_type: document.getElementById('exam_type').value,
-            date_from: document.getElementById('date_from').value,
-            date_to: document.getElementById('date_to').value,
+            date_from: dateFromInput.value,
+            date_to: dateToInput.value,
+            removed_dates: Array.from(removedDates),
+            selected_rows: selectedRows.map(r => ({ program_id: r.program_id, semester: r.semester })),
             cells: []
         };
-
         document.querySelectorAll('.custom-cell-select').forEach(sel => {
-            if (sel.value) {
-                payload.cells.push({
-                    course_id: sel.dataset.course,
-                    date: sel.dataset.date,
-                    subject_id: sel.value
-                });
-            }
+            payload.cells.push({
+                program_id: sel.dataset.programId,
+                semester: sel.dataset.semester,
+                date: sel.dataset.date,
+                course_id: sel.value || null
+            });
         });
-
         fetch('{{ request.path }}', {
             method: 'POST',
             body: JSON.stringify(payload),
@@ -166,48 +294,89 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    if (typeof showToast === 'function') showToast("Timetable saved successfully!", "success");
-                    else alert("Saved!");
-                    if (!window.location.pathname.includes(data.id)) {
+                    if (typeof showToast === 'function') showToast('Timetable saved successfully!', 'success');
+                    else alert('Saved!');
+                    const path = window.location.pathname;
+                    if (!path.match(/\/builder\/\d+\/?$/)) {
                         window.location.href = `/timetable/builder/${data.id}/`;
                     }
                 } else {
-                    alert("Error: " + data.message);
+                    alert('Error: ' + data.message);
                 }
             });
     }
-
-    // Initialize grid on load
-    document.addEventListener("DOMContentLoaded", generateGrid);
+    function exportExcel() {
+        const m = window.location.pathname.match(/\/builder\/(\d+)\/?$/);
+        if (!m) {
+            alert('Please save the timetable first, then export.');
+            return;
+        }
+        window.location.href = `/timetable/builder/${m[1]}/export/excel/`;
+    }
+    function exportPDF() {
+        const m = window.location.pathname.match(/\/builder\/(\d+)\/?$/);
+        if (!m) {
+            alert('Please save the timetable first, then export.');
+            return;
+        }
+        window.location.href = `/timetable/builder/${m[1]}/export/pdf/`;
+    }
+    document.addEventListener('click', function (e) {
+        const menu = document.getElementById('dateContextMenu');
+        if (!menu.contains(e.target)) hideContextMenu();
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+        const today = new Date();
+        dateFromInput.min = toDateStringLocal(today);
+        if (dateFromInput.value && dateFromInput.value < dateFromInput.min) dateFromInput.value = dateFromInput.min;
+        if (dateFromInput.value) dateToInput.min = dateFromInput.value;
+        dateFromInput.addEventListener('change', function () {
+            if (this.value) dateToInput.min = this.value;
+            validateDateInputs();
+            selectionPanel.classList.add('d-none');
+            selectedRows = [];
+            resetGridOnly();
+        });
+        dateToInput.addEventListener('change', function () {
+            validateDateInputs();
+            selectionPanel.classList.add('d-none');
+            selectedRows = [];
+            resetGridOnly();
+        });
+        if (existingCells.length) {
+            existingCells.forEach(c => selectedRowKeys.add(`${c.program_id}-${c.semester}`));
+            if (dateFromInput.value && dateToInput.value) {
+                const allDates = [];
+                let d = new Date(dateFromInput.value);
+                const end = new Date(dateToInput.value);
+                while (d <= end) {
+                    if (d.getDay() !== 0) allDates.push(toDateStringLocal(d));
+                    d.setDate(d.getDate() + 1);
+                }
+                const existingDateSet = new Set(existingCells.map(c => c.date));
+                allDates.forEach(ds => {
+                    if (!existingDateSet.has(ds)) removedDates.add(ds);
+                });
+            }
+            openSelectionStep();
+            confirmSelection();
+        }
+    });
 </script>
 <style>
-    @media print {
-        body * {
-            visibility: hidden;
-        }
-
-        .card:last-child,
-        .card:last-child * {
-            visibility: visible;
-            color: black !important;
-            border-color: #333 !important;
-        }
-
-        .card:last-child {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            box-shadow: none !important;
-        }
-
-        .custom-cell-select {
-            appearance: none;
-            -webkit-appearance: none;
-            border: none !important;
-            background: transparent !important;
-            color: black !important;
-        }
+    .custom-cell-select.muted-empty {
+        color: #9ca3af !important;
+        font-style: italic;
+    }
+    #dateContextMenu {
+        position: fixed;
+        z-index: 1080;
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-subtle);
+        border-radius: 8px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        padding: 6px;
+        width: 120px;
     }
 </style>
 {% endblock %}

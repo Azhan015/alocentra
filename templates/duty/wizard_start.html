@@ -13,22 +13,23 @@
                         required placeholder="e.g. Mid Term Fall 2024">
                 </div>
                 <div class="mb-4">
-                    <label class="form-label text-secondary small text-uppercase fw-bold">Exam Type</label>
-                    <select name="exam_type" class="form-select p-3 bg-elevated border-subtle text-white" required>
-                        {% for et in exam_types %}
-                        <option value="{{ et.id }}">{{ et.name }} ({{ et.duration_hours }})</option>
+                    <label class="form-label text-secondary small text-uppercase fw-bold">Timetable</label>
+                    <select id="timetableSelect" name="timetable" class="form-select p-3 bg-elevated border-subtle text-white" required>
+                        <option value="">Select timetable</option>
+                        {% for tt in timetables %}
+                        <option value="{{ tt.id }}">{{ tt.exam_type.name }} — {{ tt.exam_type.exam_program_type|default:"General" }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="row mb-5">
                     <div class="col-6">
                         <label class="form-label text-secondary small text-uppercase fw-bold">Start Date</label>
-                        <input type="date" name="date_from"
+                        <input type="date" id="dateFromInput" name="date_from"
                             class="form-control p-3 bg-elevated border-subtle text-white" required>
                     </div>
                     <div class="col-6">
                         <label class="form-label text-secondary small text-uppercase fw-bold">End Date</label>
-                        <input type="date" name="date_to" class="form-control p-3 bg-elevated border-subtle text-white"
+                        <input type="date" id="dateToInput" name="date_to" class="form-control p-3 bg-elevated border-subtle text-white"
                             required>
                     </div>
                 </div>
@@ -38,4 +39,27 @@
         </div>
     </div>
 </div>
+<script>
+document.getElementById('timetableSelect').addEventListener('change', function () {
+    const id = this.value;
+    const from = document.getElementById('dateFromInput');
+    const to = document.getElementById('dateToInput');
+    if (!id) {
+        from.value = '';
+        to.value = '';
+        from.readOnly = false;
+        to.readOnly = false;
+        return;
+    }
+    fetch(`/duty/assign/timetable/${id}/dates/`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            from.value = data.date_from || '';
+            to.value = data.date_to || '';
+            from.readOnly = true;
+            to.readOnly = true;
+        });
+});
+</script>
 {% endblock %}

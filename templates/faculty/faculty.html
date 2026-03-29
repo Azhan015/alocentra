@@ -6,8 +6,7 @@
     <div class="d-flex align-items-center">
         <h3 class="fw-bold m-0 me-3" style="color: var(--text-primary);">Faculty Members</h3>
         <span class="badge"
-            style="background: rgba(108,99,255,0.15); border: 1px solid var(--primary-light); color: var(--primary-light); border-radius: 50px; padding: 6px 12px; font-weight: normal;">{{
-            faculty_count }} members</span>
+            style="background: rgba(108,99,255,0.15); border: 1px solid var(--primary-light); color: var(--primary-light); border-radius: 50px; padding: 6px 12px; font-weight: normal;">{{ faculty_count }} members</span>
     </div>
     <div class="d-flex gap-2">
         {% if permissions.can_add_faculty %}
@@ -31,7 +30,7 @@
             <select name="dept" class="form-select w-auto">
                 <option value="">All Departments</option>
                 {% for dept in departments %}
-                <option value="{{ dept }}" {% if d==dept %}selected{% endif %}>{{ dept }}</option>
+                <option value="{{ dept }}" {% if d == dept %}selected{% endif %}>{{ dept }}</option>
                 {% endfor %}
             </select>
             <button type="submit" class="btn btn-outline-secondary">Filter</button>
@@ -65,6 +64,7 @@
                     </th>
                     <th scope="col" style="width: 60px;">#</th>
                     <th scope="col">Name</th>
+                    <th scope="col">Email</th>
                     <th scope="col">Designation</th>
                     <th scope="col">Department</th>
                     <th scope="col" class="text-end">Actions</th>
@@ -76,6 +76,7 @@
                     <td><input class="form-check-input row-checkbox" type="checkbox" value="{{ fac.id }}"></td>
                     <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
                     <td class="fw-bold">{{ fac.name }}</td>
+                    <td class="text-secondary">{{ fac.email|default:"-" }}</td>
                     <td>{{ fac.designation }}</td>
                     <td>{{ fac.department|default:"-" }}</td>
                     <td class="text-end">
@@ -92,7 +93,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center text-secondary py-4">No results found for your search.</td>
+                    <td colspan="7" class="text-center text-secondary py-4">No results found for your search.</td>
                 </tr>
                 {% endfor %}
             </tbody>

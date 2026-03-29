@@ -1,0 +1,18 @@
+{% for c in courses %}
+<tr style="border-bottom: 1px solid var(--border-subtle);">
+    <td class="fw-bold">{{ c.code|default:"—" }}</td>
+    <td>{{ c.name }}</td>
+    <td>{{ c.program.department.name }} — {{ c.program.name }}</td>
+    <td>{{ c.semester }}</td>
+    <td class="text-secondary text-uppercase">{{ c.course_type }}</td>
+    <td>{{ c.specialisation.name|default:"General" }}</td>
+    <td class="text-end">
+        <button type="button" class="btn btn-link btn-sm text-primary p-0 me-2" onclick="editCourse({{ c.id }})">Edit</button>
+        <button type="button" class="btn btn-link btn-sm p-0" style="color: var(--accent);" onclick="delCourse({{ c.id }}, '{{ c.name|escapejs }}')">Delete</button>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="7" class="text-secondary text-center py-4">No courses yet.</td>
+</tr>
+{% endfor %}

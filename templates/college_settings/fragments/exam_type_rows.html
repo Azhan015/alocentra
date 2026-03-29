@@ -1,0 +1,15 @@
+{% for e in exam_types %}
+<tr style="border-bottom: 1px solid var(--border-subtle);">
+    <td class="fw-bold">{{ e.name }}</td>
+    <td>{{ e.exam_program_type|default:"—" }}</td>
+    <td>{{ e.duration_hours }} hrs {{ e.duration_minutes }} mins</td>
+    <td class="text-end">
+        <button type="button" class="btn btn-link btn-sm text-primary p-0 me-2" onclick="editExam({{ e.id }})">Edit</button>
+        <button type="button" class="btn btn-link btn-sm p-0" style="color: var(--accent);" onclick="delExam({{ e.id }}, '{{ e.name|escapejs }}')">Delete</button>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="4" class="text-secondary text-center py-4">No exam types yet.</td>
+</tr>
+{% endfor %}

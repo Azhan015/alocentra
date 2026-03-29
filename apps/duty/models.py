@@ -5,8 +5,9 @@ from apps.faculty.models import Faculty
 
 class ExamType(models.Model):
     name = models.CharField(max_length=100)
-    short_name = models.CharField(max_length=20)
-    duration_hours = models.CharField(max_length=50)
+    duration_hours = models.PositiveIntegerField(default=0)
+    duration_minutes = models.PositiveIntegerField(default=0)
+    exam_program_type = models.CharField(max_length=50, blank=True)
 
     def __str__(self):
         return self.name
@@ -18,6 +19,7 @@ class DutySession(models.Model):
     ]
     title = models.CharField(max_length=200)
     exam_type = models.ForeignKey(ExamType, on_delete=models.PROTECT)
+    timetable = models.ForeignKey('timetable.ExamTimetable', on_delete=models.SET_NULL, null=True, blank=True, related_name='duty_sessions')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='DRAFT')
@@ -38,8 +40,8 @@ class FacultyDutyAssignment(models.Model):
     is_reliever = models.BooleanField(default=False)
     reliever_room_count = models.PositiveIntegerField(default=5)
 
-class AssignmentResult(models.Model):
-    session = models.ForeignKey(DutySession, on_delete=models.CASCADE, related_name='results')
+class DutyAssignment(models.Model):
+    session = models.ForeignKey(DutySession, on_delete=models.CASCADE, related_name='assignments')
     date = models.DateField()
     room = models.ForeignKey(Room, on_delete=models.CASCADE)
     faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE)

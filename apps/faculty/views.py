@@ -24,13 +24,19 @@ def faculty_view(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    departments = Faculty.objects.filter(is_active=True).values_list('department', flat=True).distinct()
-    
+    departments = (
+        Faculty.objects.exclude(department__isnull=True)
+        .exclude(department='')
+        .values_list('department', flat=True)
+        .distinct()
+        .order_by('department')
+    )
+
     context = {
         'permissions': permissions,
         'page_obj': page_obj,
         'faculty_count': faculty_list.count(),
-        'departments': [dep for dep in departments if dep],
+        'departments': list(departments),
         'q': q,
         'd': d,
     }
