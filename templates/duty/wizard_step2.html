@@ -19,6 +19,9 @@
     style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
     <p class="text-secondary mb-4">Select faculty members and specify the number of duties each needs to complete during
         this session.</p>
+    {% if input_error %}
+    <div class="alert alert-danger py-2">{{ input_error }}</div>
+    {% endif %}
     <form method="POST">
         {% csrf_token %}
         <div class="table-responsive mb-4"
@@ -29,6 +32,7 @@
                         <th style="width: 50px; padding-left: 20px;"><input type="checkbox" id="selectAll"
                                 class="form-check-input"></th>
                         <th>Name</th>
+                        <th>Designation</th>
                         <th>Department</th>
                         <th style="width: 150px;">Duty Count</th>
                     </tr>
@@ -38,21 +42,21 @@
                     <tr style="border-bottom: 1px solid var(--border-subtle);" class="align-middle">
                         <td style="padding-left: 20px;">
                             <input type="checkbox" name="faculty" value="{{ fac.id }}"
-                                class="form-check-input row-checkbox" onchange="toggleCountInput(this, {{ fac.id }})" {%
-                                if fac.id in assignments %}checked{% endif %}>
+                                class="form-check-input row-checkbox" data-faculty-id="{{ fac.id }}" {% if fac.id in assignments %}checked{% endif %}>
                         </td>
                         <td class="fw-bold text-white">{{ fac.name }}</td>
+                        <td class="text-secondary">{{ fac.designation|default:"—" }}</td>
                         <td class="text-secondary">{{ fac.department }}</td>
                         <td>
                             <input type="number" name="duty_count_{{ fac.id }}" id="duty_count_{{ fac.id }}"
                                 class="form-control form-control-sm bg-elevated border-subtle text-white w-75" min="1"
-                                max="20" value="{{ assignments|get_item:fac.id|default:1 }}" {% if fac.id not in
-                                assignments %}disabled{% endif %}>
+                                max="10" value="{{ assignments|get_item:fac.id|default:1 }}" {% if fac.id not in assignments %}disabled{% endif %}>
+                            <div class="text-danger small mt-1 d-none" id="duty_error_{{ fac.id }}">Maximum 10 duties allowed</div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center text-secondary py-4">No faculty found.</td>
+                        <td colspan="5" class="text-center text-secondary py-4">No faculty found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -69,8 +73,27 @@
 </div>
 
 <script>
+    const step2Form = document.querySelector('form[method="POST"]');
+    const submitBtn = step2Form.querySelector('button[type="submit"]');
+    function validateDutyInput(input) {
+        const v = parseInt(input.value || '0', 10);
+        const id = input.id.replace('duty_count_', '');
+        const err = document.getElementById('duty_error_' + id);
+        const invalid = !isNaN(v) && v > 10;
+        err.classList.toggle('d-none', !invalid || input.disabled);
+        return !invalid || input.disabled;
+    }
+    function refreshDutyValidationState() {
+        let ok = true;
+        document.querySelectorAll('input[id^="duty_count_"]').forEach(inp => {
+            if (!validateDutyInput(inp)) ok = false;
+        });
+        submitBtn.disabled = !ok;
+    }
     function toggleCountInput(cb, id) {
-        document.getElementById('duty_count_' + id).disabled = !cb.checked;
+        const input = document.getElementById('duty_count_' + id);
+        input.disabled = !cb.checked;
+        refreshDutyValidationState();
     }
     document.getElementById('selectAll').addEventListener('change', function (e) {
         document.querySelectorAll('.row-checkbox').forEach(cb => {
@@ -78,5 +101,14 @@
             toggleCountInput(cb, cb.value);
         });
     });
+    document.querySelectorAll('.row-checkbox').forEach(cb => {
+        cb.addEventListener('change', function () {
+            toggleCountInput(this, this.dataset.facultyId || this.value);
+        });
+    });
+    document.querySelectorAll('input[id^="duty_count_"]').forEach(inp => {
+        inp.addEventListener('input', refreshDutyValidationState);
+    });
+    refreshDutyValidationState();
 </script>
 {% endblock %}

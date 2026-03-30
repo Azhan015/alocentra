@@ -1,0 +1,16 @@
+{% for s in sections %}
+<tr style="border-bottom: 1px solid var(--border-subtle);">
+    <td>{{ s.program.department.name }} — {{ s.program.name }}</td>
+    <td>{{ s.specialisation.name|default:"General" }}</td>
+    <td>{{ s.semester }}</td>
+    <td class="fw-bold">{{ s.name }}</td>
+    <td class="text-end">
+        <button type="button" class="btn btn-link btn-sm text-primary p-0 me-2" onclick="editSection({{ s.id }})">Edit</button>
+        <button type="button" class="btn btn-link btn-sm p-0" style="color: var(--accent);" onclick="delSection({{ s.id }}, '{{ s.name|escapejs }}')">Delete</button>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="5" class="text-secondary text-center py-4">No sections yet.</td>
+</tr>
+{% endfor %}

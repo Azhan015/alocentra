@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     'apps.faculty',
     'apps.duty',
     'apps.timetable',
+    'apps.college_settings',
     'apps.notifications',
 ]
 

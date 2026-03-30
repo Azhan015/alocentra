@@ -9,5 +9,6 @@ urlpatterns = [
     path('faculty/', include('apps.faculty.urls')),
     path('duty/', include('apps.duty.urls')),
     path('timetable/', include('apps.timetable.urls')),
+    path('settings/', include('apps.college_settings.urls')),
     path('notifications/', include('apps.notifications.urls')),
 ]
