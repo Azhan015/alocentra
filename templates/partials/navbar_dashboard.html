@@ -39,11 +39,15 @@
                 </li>
                 {% endif %}
                 {% if permissions.can_assign_duty %}
-                <li class="nav-item">
-                    <a class="nav-link px-3 py-2 rounded-pill {% if request.path == '/duty/assign/' %}active-nav{% else %}text-secondary{% endif %}"
-                        href="/duty/assign/">
+                <li class="nav-item dropdown">
+                    <a class="nav-link px-3 py-2 rounded-pill {% if '/duty/' in request.path %}active-nav{% else %}text-secondary{% endif %} dropdown-toggle" 
+                        href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-person-check me-1"></i> Assign Duty
                     </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle);">
+                        <li><a class="dropdown-item py-2" href="{% url 'duty:wizard_start' %}"><i class="bi bi-plus-circle me-2"></i> New Session</a></li>
+                        <li><a class="dropdown-item py-2" href="{% url 'duty:history' %}"><i class="bi bi-clock-history me-2"></i> Session History</a></li>
+                    </ul>
                 </li>
                 {% endif %}
                 {% if user.is_coe or permissions.can_edit_timetable %}

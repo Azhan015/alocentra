@@ -2,6 +2,7 @@ import logging
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from apps.accounts.utils import permission_required_custom, get_user_permissions
 from apps.rooms.models import Room
 from apps.faculty.models import Faculty
@@ -35,7 +36,8 @@ def duty_wizard_start(request):
         return redirect('duty:wizard_step1')
 
     timetables = ExamTimetable.objects.select_related('exam_type').order_by('-created_at')
-    context = {'permissions': permissions, 'timetables': timetables}
+    sessions = DutySession.objects.filter(created_by=request.user).order_by('-created_at')
+    context = {'permissions': permissions, 'timetables': timetables, 'sessions': sessions}
     return render(request, 'duty/wizard_start.html', context)
 
 
@@ -89,6 +91,7 @@ def duty_wizard_step2(request):
 
     session = get_object_or_404(DutySession, id=session_id)
     faculties = Faculty.objects.filter(is_active=True).order_by('name')
+    room_count = session.session_rooms.count()
 
     if request.method == 'POST':
         selected_faculties = request.POST.getlist('faculty')
@@ -130,6 +133,8 @@ def duty_wizard_step2(request):
         'faculties': faculties,
         'assignments': assignments,
         'permissions': get_user_permissions(request.user),
+        'room_count': room_count,
+        'invigilators_needed': room_count,
     }
     return render(request, 'duty/wizard_step2.html', context)
 
@@ -144,6 +149,9 @@ def duty_wizard_step3(request):
     session = get_object_or_404(DutySession, id=session_id)
     assigned_ids = session.faculty_assignments.filter(is_reliever=False).values_list('faculty_id', flat=True)
     faculties = Faculty.objects.filter(is_active=True).exclude(id__in=assigned_ids).order_by('name')
+    room_count = session.session_rooms.count()
+    import math
+    relievers_needed = math.ceil(room_count / 4) if room_count > 0 else 0
 
     if request.method == 'POST':
         selected_relievers = request.POST.getlist('relievers')
@@ -174,6 +182,8 @@ def duty_wizard_step3(request):
         'faculties': faculties,
         'reliever_assignments': reliever_assignments,
         'permissions': get_user_permissions(request.user),
+        'room_count': room_count,
+        'relievers_needed': relievers_needed,
     }
     return render(request, 'duty/wizard_step3.html', context)
 
@@ -182,14 +192,22 @@ def duty_wizard_step3(request):
 @permission_required_custom('can_view_duty')
 def duty_results(request, session_id):
     session = get_object_or_404(DutySession, id=session_id)
-    results = DutyAssignment.objects.filter(session=session).select_related('faculty', 'room').order_by(
-        'date', 'room__room_no'
+    from .assignment_engine import (
+        evaluate_shortage,
+        generate_assignments,
+        get_timetable_exam_dates_for_session,
     )
+
+    exam_dates = get_timetable_exam_dates_for_session(session)
+    rooms = list(session.session_rooms.select_related('room').all())
+    rooms_sorted = sorted((sr.room for sr in rooms), key=lambda r: r.room_no)
+
+    results_qs = DutyAssignment.objects.filter(session=session, date__in=exam_dates).select_related('faculty', 'room')
+    results_qs = results_qs.order_by('date', 'room__room_no')
+
     shortage = {'invigilator': [], 'reliever': []}
 
-    if not results.exists() and session.status == 'FINALIZED':
-        from .assignment_engine import generate_assignments, evaluate_shortage
-
+    if exam_dates and not results_qs.exists() and session.status == 'FINALIZED':
         try:
             shortage = generate_assignments(session) or {'invigilator': [], 'reliever': []}
         except Exception:
@@ -198,12 +216,46 @@ def duty_results(request, session_id):
                 session.id,
                 session.title,
             )
-        results = DutyAssignment.objects.filter(session=session).select_related('faculty', 'room').order_by(
-            'date', 'room__room_no'
-        )
+        results_qs = DutyAssignment.objects.filter(session=session, date__in=exam_dates).select_related(
+            'faculty', 'room'
+        ).order_by('date', 'room__room_no')
     else:
-        from .assignment_engine import evaluate_shortage
         shortage = evaluate_shortage(session)
+
+    inv_map = {}
+    rel_map = {}
+    for a in results_qs:
+        key = (a.date, a.room_id)
+        if a.is_reliever:
+            rel_map.setdefault(key, []).append(a)
+        else:
+            # Engine is expected to create at most one invigilator per (date, room).
+            inv_map[key] = a
+
+    grouped_results = []
+    for d in exam_dates:
+        for room in rooms_sorted:
+            key = (d, room.id)
+            inv = inv_map.get(key)
+            rels = rel_map.get(key, [])
+            # Stable ordering for export/readability.
+            rels_sorted = sorted(rels, key=lambda x: (x.faculty.name or '', x.id))
+            if inv:
+                designation = getattr(inv.faculty, 'designation', '') or '--'
+            elif rels_sorted:
+                designation = getattr(rels_sorted[0].faculty, 'designation', '') or '--'
+            else:
+                designation = '--'
+
+            grouped_results.append(
+                {
+                    'date': d,
+                    'room_no': room.room_no,
+                    'invigilator': inv.faculty.name if inv else None,
+                    'relievers': [r.faculty.name for r in rels_sorted],
+                    'designation': designation,
+                }
+            )
 
     combined = []
     seen = set()
@@ -218,12 +270,59 @@ def duty_results(request, session_id):
 
     context = {
         'session': session,
-        'results': results,
+        'grouped_results': grouped_results,
         'permissions': get_user_permissions(request.user),
         'shortage_pairs': combined,
         'has_shortage': bool(combined),
     }
     return render(request, 'duty/results.html', context)
+
+
+def _resume_wizard_step_for_session(session):
+    """
+    Decide which wizard step should be resumed based on persisted selections.
+    """
+    has_rooms = session.session_rooms.exists()
+    has_invigilators = session.faculty_assignments.filter(is_reliever=False).exists()
+    has_relievers = session.faculty_assignments.filter(is_reliever=True).exists()
+
+    if not has_rooms:
+        return 1
+    if not has_invigilators:
+        return 2
+    if not has_relievers:
+        return 3
+    return 3
+
+
+@login_required
+@permission_required_custom('can_assign_duty')
+def duty_session_resume(request, session_id):
+    session = get_object_or_404(DutySession, id=session_id, created_by=request.user)
+    if session.status == 'FINALIZED':
+        return redirect('duty:results', session_id=session.id)
+
+    request.session['current_duty_session_id'] = session.id
+
+    step = _resume_wizard_step_for_session(session)
+    if step == 1:
+        return redirect('duty:wizard_step1')
+    if step == 2:
+        return redirect('duty:wizard_step2')
+    return redirect('duty:wizard_step3')
+
+
+@login_required
+@permission_required_custom('can_assign_duty')
+@require_POST
+def duty_session_delete(request, session_id):
+    session = get_object_or_404(DutySession, id=session_id, created_by=request.user)
+
+    if request.session.get('current_duty_session_id') == session.id:
+        del request.session['current_duty_session_id']
+
+    session.delete()  # CASCADE deletes DutyAssignment and other related rows.
+    return redirect('duty:history')
 
 
 @login_required

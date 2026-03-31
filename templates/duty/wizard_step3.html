@@ -15,10 +15,27 @@
     </div>
 </div>
 
-<div class="card bg-surface border-subtle radius-card shadow-card p-4"
-    style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
-    <p class="text-secondary mb-4">Select faculty to act as relievers. They will be dynamically rotated for the assigned
-        number of rooms.</p>
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="alert alert-info border-0 shadow-sm d-flex align-items-center mb-0" style="background: rgba(13, 202, 240, 0.1); border-radius: 12px;">
+                <i class="bi bi-info-circle-fill fs-4 me-3 text-info"></i>
+                <div>
+                    <div class="small text-secondary text-uppercase fw-bold" style="letter-spacing: 0.5px;">Assignment Info</div>
+                    <div class="text-white">
+                        Rooms selected: <span class="fw-bold text-info">{{ room_count }}</span> &bull; 
+                        Relievers needed per day: <span class="fw-bold text-info">{{ relievers_needed }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="position-relative">
+                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary"></i>
+                <input type="text" id="relieverSearch" class="form-control p-3 ps-5 bg-elevated border-subtle text-white" 
+                    placeholder="Search faculty by name..." style="border-radius: 12px;">
+            </div>
+        </div>
+    </div>
     <form method="POST">
         {% csrf_token %}
         <div class="table-responsive mb-4"
@@ -41,7 +58,7 @@
                             <input type="checkbox" name="relievers" value="{{ fac.id }}"
                                 class="form-check-input row-checkbox" onchange="toggleCountInput(this, {{ fac.id }})" {% if fac.id in reliever_assignments %}checked{% endif %}>
                         </td>
-                        <td class="fw-bold text-white">{{ fac.name }}</td>
+                        <td class="fw-bold text-white faculty-name">{{ fac.name }}</td>
                         <td class="text-secondary">{{ fac.designation|default:"—" }}</td>
                         <td class="text-secondary">{{ fac.department }}</td>
                         <td>
@@ -83,6 +100,20 @@
         document.querySelectorAll('.row-checkbox').forEach(cb => {
             cb.checked = e.target.checked;
             toggleCountInput(cb, cb.value);
+        });
+    });
+
+    // Reliever search filter
+    document.getElementById('relieverSearch').addEventListener('keyup', function() {
+        const query = this.value.toLowerCase();
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const name = row.querySelector('.faculty-name').textContent.toLowerCase();
+            if (name.includes(query)) {
+                row.classList.remove('d-none');
+            } else {
+                row.classList.add('d-none');
+            }
         });
     });
 </script>

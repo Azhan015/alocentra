@@ -41,36 +41,46 @@
         </div>
 
         <div class="table-responsive">
-            <table class="table table-bordered table-sm text-dark" id="resultsTable" style="border-color: #101111; color: #212529;">
-                <thead style="background: #141313;">
+            <table class="table table-bordered table-sm" id="resultsTable" style="border-color: #101111;">
+                <thead style="background: #141313; color: #212529 !important;">
                     <tr class="text-uppercase small fw-bold">
                         <th>Date</th>
-                        <th>Room No</th>
-                        <th>Faculty Name</th>
+                        <th>Room</th>
+                        <th>Invigilator</th>
+                        <th>Reliever(s)</th>
                         <th>Designation</th>
-                        <th>Role</th>
-                        <th>Signature</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for res in results %}
+                <tbody style="color: #212529 !important;">
+                    {% for row in grouped_results %}
                     <tr>
-                        <td>{{ res.date|date:"d M Y" }}</td>
-                        <td>{{ res.room.room_no }}</td>
-                        <td class="fw-bold text-dark">{{ res.faculty.name }}</td>
-                        <td>{{ res.faculty.designation }}</td>
+                        <td class="fw-bold text-dark">{{ row.date|date:"d M Y" }}</td>
+                        <td class="fw-bold text-dark">{{ row.room_no }}</td>
                         <td>
-                            {% if res.is_reliever %}
-                            <span class="badge bg-warning text-white">Reliever</span>
+                            {% if row.invigilator %}
+                                <span class="badge bg-primary">Invigilator</span>
+                                <span class="ms-2 fw-bold text-dark">{{ row.invigilator }}</span>
                             {% else %}
-                            <span class="badge bg-primary">Invigilator</span>
+                                <span class="text-dark">--</span>
                             {% endif %}
                         </td>
-                        <td style="width: 120px;"></td>
+                        <td>
+                            {% if row.relievers %}
+                                {% for name in row.relievers %}
+                                    <div>
+                                        <span class="badge bg-warning text-dark">Reliever</span>
+                                        <span class="ms-2 fw-bold text-dark">{{ name }}</span>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-dark">--</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-dark">{{ row.designation }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-4">No assignments could be generated. Check faculty
+                        <td colspan="5" class="text-center py-4 text-dark">No assignments could be generated. Check faculty
                             capacity.</td>
                     </tr>
                     {% endfor %}

@@ -11,3 +11,4 @@ Pillow==10.2.0
 python-decouple==3.8
 dj-database-url==2.1.0
 django-axes==6.3.0
+reportlab

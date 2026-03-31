@@ -18,9 +18,9 @@
     <div class="row g-3">
         <div class="col-md-4">
             <label class="form-label text-secondary small text-uppercase fw-bold">Exam Type</label>
-            <select id="exam_type" class="form-select bg-elevated border-subtle text-white">
+            <select id="exam_type" class="form-select bg-elevated border-subtle text-white" onchange="openSelectionStep()">
                 {% for et in exam_types %}
-                <option value="{{ et.id }}"{% if timetable and timetable.exam_type_id == et.id %} selected{% endif %}>{{ et.name }}</option>
+                <option value="{{ et.id }}" data-program-type="{{ et.exam_program_type }}"{% if timetable and timetable.exam_type_id == et.id %} selected{% endif %}>{{ et.name }}{% if et.exam_program_type %} — {{ et.exam_program_type }}{% endif %}</option>
                 {% endfor %}
             </select>
         </div>
@@ -48,13 +48,35 @@
             <div class="small text-secondary">Select programs and semesters, then confirm.</div>
         </div>
         <div class="d-flex gap-2 align-items-end">
-            <div>
-                <label class="form-label small text-secondary mb-1">Programs</label>
-                <select id="programMultiSelect" class="form-select form-select-sm" multiple style="min-width: 260px; height: 110px;"></select>
+            <div class="position-relative">
+                <button type="button" id="programsDropdownBtn" class="btn btn-outline-custom btn-sm" style="white-space: nowrap;">
+                    <span id="programsBtnLabel">Programs</span> ▾
+                </button>
+                <div id="programsDropdownPanel" class="d-none"
+                    style="position: absolute; top: calc(100% + 6px); left: 0; z-index: 1080; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 10px; min-width: 260px; max-height: 180px; overflow: auto;">
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                        <div class="d-flex gap-2">
+                            <span class="small text-secondary" style="cursor:pointer;" onclick="selectAllCheckboxes('programsChecklist')">Select All</span>
+                            <span class="small text-secondary" style="cursor:pointer;" onclick="deselectAllCheckboxes('programsChecklist')">Deselect All</span>
+                        </div>
+                    </div>
+                    <div id="programsChecklist" class="d-flex flex-column gap-1"></div>
+                </div>
             </div>
-            <div>
-                <label class="form-label small text-secondary mb-1">Semesters</label>
-                <select id="semesterMultiSelect" class="form-select form-select-sm" multiple style="min-width: 140px; height: 110px;"></select>
+            <div class="position-relative">
+                <button type="button" id="semestersDropdownBtn" class="btn btn-outline-custom btn-sm" style="white-space: nowrap;">
+                    <span id="semestersBtnLabel">Semesters</span> ▾
+                </button>
+                <div id="semestersDropdownPanel" class="d-none"
+                    style="position: absolute; top: calc(100% + 6px); left: 0; z-index: 1080; background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 10px; min-width: 160px; max-height: 180px; overflow: auto;">
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                        <div class="d-flex gap-2">
+                            <span class="small text-secondary" style="cursor:pointer;" onclick="selectAllCheckboxes('semestersChecklist')">Select All</span>
+                            <span class="small text-secondary" style="cursor:pointer;" onclick="deselectAllCheckboxes('semestersChecklist')">Deselect All</span>
+                        </div>
+                    </div>
+                    <div id="semestersChecklist" class="d-flex flex-column gap-1"></div>
+                </div>
             </div>
             <button class="btn btn-primary-custom btn-sm" type="button" onclick="confirmSelection()">Confirm</button>
         </div>
@@ -86,6 +108,80 @@
     const dateToInput = document.getElementById('date_to');
     const dateError = document.getElementById('dateError');
     const selectionPanel = document.getElementById('selectionPanel');
+    const programsDropdownBtn = document.getElementById('programsDropdownBtn');
+    const programsDropdownPanel = document.getElementById('programsDropdownPanel');
+    const programsChecklist = document.getElementById('programsChecklist');
+    const semestersDropdownBtn = document.getElementById('semestersDropdownBtn');
+    const semestersDropdownPanel = document.getElementById('semestersDropdownPanel');
+    const semestersChecklist = document.getElementById('semestersChecklist');
+
+    function toDateStringLocal(dt) {
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const d = String(dt.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    // Apply strict date constraints
+    function initDateConstraints() {
+        if (!dateFromInput || !dateToInput) return;
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const minStart = toDateStringLocal(tomorrow);
+        dateFromInput.min = minStart;
+        
+        if (dateFromInput.value) {
+            const nextDay = new Date(dateFromInput.value);
+            nextDay.setDate(nextDay.getDate() + 1);
+            dateToInput.min = toDateStringLocal(nextDay);
+        } else {
+            dateToInput.min = minStart;
+        }
+    }
+
+    function closeDropdownPanels() {
+        programsDropdownPanel.classList.add('d-none');
+        semestersDropdownPanel.classList.add('d-none');
+    }
+
+    function updateProgramsBtnLabel() {
+        const checked = programsChecklist.querySelectorAll('input[type="checkbox"]:checked').length;
+        programsDropdownBtn.querySelector('#programsBtnLabel').textContent = checked > 0 ? `Programs (${checked})` : 'Programs';
+    }
+
+    function updateSemestersBtnLabel() {
+        const checked = semestersChecklist.querySelectorAll('input[type="checkbox"]:checked').length;
+        semestersDropdownBtn.querySelector('#semestersBtnLabel').textContent = checked > 0 ? `Semesters (${checked})` : 'Semesters';
+    }
+
+    function attachDropdownToggleHandlers() {
+        if (!programsDropdownBtn || !semestersDropdownBtn) return;
+
+        programsDropdownBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            programsDropdownPanel.classList.toggle('d-none');
+            semestersDropdownPanel.classList.add('d-none');
+        });
+
+        semestersDropdownBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            semestersDropdownPanel.classList.toggle('d-none');
+            programsDropdownPanel.classList.add('d-none');
+        });
+
+        document.addEventListener('click', function (e) {
+            const t = e.target;
+            if (!t) return;
+            const clickedInsidePrograms =
+                programsDropdownBtn.contains(t) || programsDropdownPanel.contains(t);
+            const clickedInsideSemesters =
+                semestersDropdownBtn.contains(t) || semestersDropdownPanel.contains(t);
+
+            if (!clickedInsidePrograms && !clickedInsideSemesters) {
+                closeDropdownPanels();
+            }
+        });
+    }
 
     function coursesForProgramSemester(programId, semester) {
         const pid = parseInt(programId, 10);
@@ -104,21 +200,24 @@
         dateError.textContent = msg || '';
         dateError.classList.toggle('d-none', !msg);
     }
-    function toDateStringLocal(dt) {
-        const y = dt.getFullYear();
-        const m = String(dt.getMonth() + 1).padStart(2, '0');
-        const d = String(dt.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
-    }
+    
     function validateDateInputs() {
         const df = dateFromInput.value;
         const dt = dateToInput.value;
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const minStr = toDateStringLocal(tomorrow);
+
         if (!df || !dt) {
             showDateError('Please select both Start Date and End Date.');
             return false;
         }
-        if (new Date(df) > new Date(dt)) {
-            showDateError('End Date cannot be before Start Date.');
+        if (df < minStr) {
+            showDateError('Start Date must be after today.');
+            return false;
+        }
+        if (dt <= df) {
+            showDateError('End Date must be after Start Date.');
             return false;
         }
         showDateError('');
@@ -138,8 +237,8 @@
         return dates;
     }
     function resetGridOnly() {
-        document.getElementById('gridHead').innerHTML = '';
-        document.getElementById('gridBody').innerHTML = '';
+        if (document.getElementById('gridHead')) document.getElementById('gridHead').innerHTML = '';
+        if (document.getElementById('gridBody')) document.getElementById('gridBody').innerHTML = '';
     }
     function openSelectionStep() {
         resetGridOnly();
@@ -147,48 +246,117 @@
         hydrateCompactSelectors();
         selectionPanel.classList.remove('d-none');
     }
+    window.openSelectionStep = openSelectionStep;
+
+    function selectAllCheckboxes(containerId) {
+        document.getElementById(containerId).querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = true;
+        });
+        if (containerId === 'programsChecklist') updateProgramsBtnLabel();
+        else updateSemestersBtnLabel();
+    }
+    window.selectAllCheckboxes = selectAllCheckboxes;
+    function deselectAllCheckboxes(containerId) {
+        document.getElementById(containerId).querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+        });
+        if (containerId === 'programsChecklist') updateProgramsBtnLabel();
+        else updateSemestersBtnLabel();
+    }
+    window.deselectAllCheckboxes = deselectAllCheckboxes;
+
     function hydrateCompactSelectors() {
-        const pSel = document.getElementById('programMultiSelect');
-        const sSel = document.getElementById('semesterMultiSelect');
+        const selectedEt = document.getElementById('exam_type');
+        const selectedOpt = selectedEt.options[selectedEt.selectedIndex];
+        const progTypeFromExam = selectedOpt ? selectedOpt.getAttribute('data-program-type') : 'UG';
+
+        const filteredRows = allGridRows.filter(r => r.program_type === progTypeFromExam);
+
         const programMap = new Map();
-        const semSet = new Set();
-        allGridRows.forEach(r => {
+        filteredRows.forEach(r => {
             programMap.set(String(r.program_id), r.program_name);
-            semSet.add(String(r.semester));
         });
-        pSel.innerHTML = '';
+
+        programsChecklist.innerHTML = '';
         Array.from(programMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
-            const o = document.createElement('option');
-            o.value = id;
-            o.textContent = name;
-            const previously = selectedRows.some(x => String(x.program_id) === id);
-            o.selected = selectedRows.length ? previously : true;
-            pSel.appendChild(o);
+            const checked = selectedRows.length ? selectedRows.some(x => String(x.program_id) === id) : true;
+            const idSafe = `program_cb_${id}`;
+            const label = document.createElement('label');
+            label.className = 'd-flex align-items-center gap-2';
+            label.htmlFor = idSafe;
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = id;
+            cb.id = idSafe;
+            cb.checked = checked;
+            cb.addEventListener('change', updateProgramsBtnLabel);
+
+            const t = document.createElement('span');
+            t.className = 'text-secondary';
+            t.textContent = name;
+
+            label.appendChild(cb);
+            label.appendChild(t);
+            programsChecklist.appendChild(label);
         });
-        sSel.innerHTML = '';
-        Array.from(semSet).sort((a, b) => Number(a) - Number(b)).forEach(sem => {
-            const o = document.createElement('option');
-            o.value = sem;
-            o.textContent = `Sem ${sem}`;
-            const previously = selectedRows.some(x => String(x.semester) === sem);
-            o.selected = selectedRows.length ? previously : true;
-            sSel.appendChild(o);
-        });
+
+        let maxSem = 6;
+        if (progTypeFromExam === 'PG') maxSem = 4;
+        else if (progTypeFromExam === 'PHD') {
+            maxSem = 0;
+            filteredRows.forEach(r => { if (r.semester > maxSem) maxSem = r.semester; });
+            if (maxSem === 0) maxSem = 6;
+        }
+
+        semestersChecklist.innerHTML = '';
+        for (let sem = 1; sem <= maxSem; sem++) {
+            const semStr = String(sem);
+            const checked = (selectedRows.length > 0) ? selectedRows.some(x => String(x.semester) === semStr && x.program_type === progTypeFromExam) : true;
+            const idSafe = `sem_cb_${semStr}`;
+            const label = document.createElement('label');
+            label.className = 'd-flex align-items-center gap-2';
+            label.htmlFor = idSafe;
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = semStr;
+            cb.id = idSafe;
+            cb.checked = checked;
+            cb.addEventListener('change', updateSemestersBtnLabel);
+
+            const t = document.createElement('span');
+            t.className = 'text-secondary';
+            t.textContent = `Sem ${sem}`;
+
+            label.appendChild(cb);
+            label.appendChild(t);
+            semestersChecklist.appendChild(label);
+        }
+
+        updateProgramsBtnLabel();
+        updateSemestersBtnLabel();
     }
     function confirmSelection() {
-        const programs = Array.from(document.getElementById('programMultiSelect').selectedOptions).map(o => o.value);
-        const semesters = Array.from(document.getElementById('semesterMultiSelect').selectedOptions).map(o => o.value);
+        const programs = Array.from(programsChecklist.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+        const semesters = Array.from(semestersChecklist.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
         if (!programs.length || !semesters.length) {
             showDateError('Select at least one Program + Semester row.');
             return;
         }
+        const selectedEt = document.getElementById('exam_type');
+        const selectedOpt = selectedEt.options[selectedEt.selectedIndex];
+        const progTypeFromExam = selectedOpt ? selectedOpt.getAttribute('data-program-type') : 'UG';
+
         selectedRows = allGridRows.filter(
-            r => programs.includes(String(r.program_id)) && semesters.includes(String(r.semester))
+            r => r.program_type === progTypeFromExam && programs.includes(String(r.program_id)) && semesters.includes(String(r.semester))
         );
         selectedRowKeys = new Set(selectedRows.map(r => r.row_key));
         showDateError('');
         renderGrid();
     }
+    window.confirmSelection = confirmSelection;
+
     function updateCellDisplay(selectEl) {
         selectEl.classList.toggle('muted-empty', !selectEl.value);
     }
@@ -222,12 +390,12 @@
             const tr = document.createElement('tr');
             const tdName = document.createElement('td');
             tdName.className = 'fw-bold text-start';
-            tdName.innerHTML = `${row.department_name} — ${row.program_name} <span class="badge bg-secondary">Sem ${row.semester}</span>`;
+            tdName.innerHTML = `${row.department_name} - ${row.program_name} <span class="badge bg-secondary">Sem ${row.semester}</span>`;
             tr.appendChild(tdName);
             const rowCourses = coursesForProgramSemester(row.program_id, row.semester);
             let optionsHtml = '<option value="">--</option>';
             rowCourses.forEach(c => {
-                const label = (c.code ? c.code + ' — ' : '') + c.name;
+                const label = (c.code ? c.code + ' - ' : '') + c.name;
                 optionsHtml += `<option value="${c.id}">${label}</option>`;
             });
             activeDates.forEach(dateStr => {
@@ -250,12 +418,14 @@
     }
     function showContextMenu(x, y) {
         const m = document.getElementById('dateContextMenu');
+        if (!m) return;
         m.style.left = `${x}px`;
         m.style.top = `${y}px`;
         m.classList.remove('d-none');
     }
     function hideContextMenu() {
-        document.getElementById('dateContextMenu').classList.add('d-none');
+        const m = document.getElementById('dateContextMenu');
+        if (m) m.classList.add('d-none');
     }
     function markNoExam() {
         if (contextDate) {
@@ -264,6 +434,8 @@
         }
         hideContextMenu();
     }
+    window.markNoExam = markNoExam;
+
     function saveTimetable() {
         if (!validateDateInputs()) return;
         if (!selectedRows.length) {
@@ -286,7 +458,7 @@
                 course_id: sel.value || null
             });
         });
-        fetch('{{ request.path }}', {
+        fetch(window.location.pathname, {
             method: 'POST',
             body: JSON.stringify(payload),
             headers: { 'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json' }
@@ -296,8 +468,7 @@
                 if (data.success) {
                     if (typeof showToast === 'function') showToast('Timetable saved successfully!', 'success');
                     else alert('Saved!');
-                    const path = window.location.pathname;
-                    if (!path.match(/\/builder\/\d+\/?$/)) {
+                    if (!window.location.pathname.includes('/' + data.id + '/')) {
                         window.location.href = `/timetable/builder/${data.id}/`;
                     }
                 } else {
@@ -305,6 +476,8 @@
                 }
             });
     }
+    window.saveTimetable = saveTimetable;
+
     function exportExcel() {
         const m = window.location.pathname.match(/\/builder\/(\d+)\/?$/);
         if (!m) {
@@ -313,6 +486,7 @@
         }
         window.location.href = `/timetable/builder/${m[1]}/export/excel/`;
     }
+    window.exportExcel = exportExcel;
     function exportPDF() {
         const m = window.location.pathname.match(/\/builder\/(\d+)\/?$/);
         if (!m) {
@@ -321,28 +495,39 @@
         }
         window.location.href = `/timetable/builder/${m[1]}/export/pdf/`;
     }
+    window.exportPDF = exportPDF;
+
     document.addEventListener('click', function (e) {
         const menu = document.getElementById('dateContextMenu');
-        if (!menu.contains(e.target)) hideContextMenu();
+        if (menu && !menu.contains(e.target)) hideContextMenu();
     });
+
     document.addEventListener('DOMContentLoaded', function () {
-        const today = new Date();
-        dateFromInput.min = toDateStringLocal(today);
-        if (dateFromInput.value && dateFromInput.value < dateFromInput.min) dateFromInput.value = dateFromInput.min;
-        if (dateFromInput.value) dateToInput.min = dateFromInput.value;
+        attachDropdownToggleHandlers();
+        initDateConstraints();
+        
         dateFromInput.addEventListener('change', function () {
-            if (this.value) dateToInput.min = this.value;
+            if (this.value) {
+                const nextDay = new Date(this.value);
+                nextDay.setDate(nextDay.getDate() + 1);
+                dateToInput.min = toDateStringLocal(nextDay);
+                if (dateToInput.value && dateToInput.value <= this.value) {
+                    dateToInput.value = toDateStringLocal(nextDay);
+                }
+            }
             validateDateInputs();
             selectionPanel.classList.add('d-none');
             selectedRows = [];
             resetGridOnly();
         });
+
         dateToInput.addEventListener('change', function () {
             validateDateInputs();
             selectionPanel.classList.add('d-none');
             selectedRows = [];
             resetGridOnly();
         });
+
         if (existingCells.length) {
             existingCells.forEach(c => selectedRowKeys.add(`${c.program_id}-${c.semester}`));
             if (dateFromInput.value && dateToInput.value) {

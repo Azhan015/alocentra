@@ -4,6 +4,7 @@ from datetime import timedelta
 from django.db import transaction
 from django.db.models import Count
 from .models import DutyAssignment
+from apps.timetable.models import TimetableCell
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,24 @@ def _session_days(session):
     return days
 
 
+def _timetable_exam_dates(timetable):
+    """
+    Return actual exam dates for the timetable.
+    A date is considered an exam day if at least one timetable cell on that date
+    has an assigned course (i.e. course is not null).
+    """
+    if not timetable:
+        return []
+    dates = list(
+        TimetableCell.objects.filter(timetable=timetable, course__isnull=False)
+        .values_list('date', flat=True)
+        .distinct()
+    )
+    dates = sorted(dates)
+    # Timetable builder skips Sundays, but keep this guard for safety.
+    return [d for d in dates if d.weekday() != 6]
+
+
 def evaluate_shortage(session):
     """
     Return coverage gaps for both invigilator and reliever expectations.
@@ -25,7 +44,10 @@ def evaluate_shortage(session):
     - reliever: every (date, room) should have at least one reliever assignment
     """
     rooms = [sr.room for sr in session.session_rooms.select_related('room').all()]
-    days = _session_days(session) if session.date_from and session.date_to else []
+    if session.timetable:
+        days = _timetable_exam_dates(session.timetable)
+    else:
+        days = _session_days(session) if session.date_from and session.date_to else []
     inv_map = {
         (row['date'], row['room_id'])
         for row in DutyAssignment.objects.filter(session=session, is_reliever=False).values('date', 'room_id')
@@ -75,7 +97,13 @@ def generate_assignments(session):
             session.id,
         )
 
-    days = _session_days(session)
+    if session.timetable:
+        days = _timetable_exam_dates(session.timetable)
+    else:
+        days = _session_days(session)
+    if not days:
+        logger.warning('generate_assignments: session %s has no timetable exam dates; skipping.', session.id)
+        return
 
     slots = []
     for d in days:
@@ -206,3 +234,10 @@ def generate_assignments(session):
         len(reliever_results),
     )
     return evaluate_shortage(session)
+
+
+def get_timetable_exam_dates_for_session(session):
+    """Shared helper for views/templates to keep exam-date filtering consistent."""
+    if session.timetable:
+        return _timetable_exam_dates(session.timetable)
+    return _session_days(session) if session.date_from and session.date_to else []
