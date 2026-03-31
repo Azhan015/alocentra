@@ -11,4 +11,6 @@ urlpatterns = [
     path('assign/step3/', views.duty_wizard_step3, name='wizard_step3'),
     path('results/<int:session_id>/', views.duty_results, name='results'),
     path('history/', views.duty_sessions_list, name='history'),
+    path('history/session/<int:session_id>/resume/', views.duty_session_resume, name='session_resume'),
+    path('history/session/<int:session_id>/delete/', views.duty_session_delete, name='session_delete'),
 ]

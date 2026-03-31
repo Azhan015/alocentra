@@ -12,6 +12,9 @@ class ExamType(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        unique_together = [['name', 'exam_program_type', 'duration_hours', 'duration_minutes']]
+
 class DutySession(models.Model):
     STATUS_CHOICES = [
         ('DRAFT', 'Draft'),

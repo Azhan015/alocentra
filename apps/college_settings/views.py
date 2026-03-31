@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse, HttpResponse
-from django.template.loader import render_to_string
+from django.db import IntegrityError
 from django.db.models import ProtectedError
 from django.db.models.functions import Lower
 from django.contrib.auth.decorators import login_required
@@ -10,7 +10,7 @@ from apps.timetable.models import Department, Program, Specialisation, Section, 
 from apps.duty.models import ExamType
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
-
+from django.template.loader import render_to_string
 
 def _programs_options_qs():
     return Program.objects.select_related('department').order_by('department__name', 'name')
@@ -585,13 +585,16 @@ def exam_type_add(request):
         m = 0
     if not name:
         return JsonResponse({'success': False, 'message': 'Name is required.'})
-    ExamType.objects.create(
-        name=name,
-        duration_hours=h,
-        duration_minutes=m,
-        exam_program_type=exam_program_type,
-    )
-    return JsonResponse({'success': True, 'message': 'Exam type added.'})
+    try:
+        ExamType.objects.create(
+            name=name,
+            duration_hours=h,
+            duration_minutes=m,
+            exam_program_type=exam_program_type,
+        )
+        return JsonResponse({'success': True, 'message': 'Exam type added.'})
+    except IntegrityError:
+        return JsonResponse({'success': False, 'message': 'An exam type with the same name, program type and duration already exists.'})
 
 
 @login_required
@@ -628,8 +631,11 @@ def exam_type_edit(request, pk):
     et.duration_hours = h
     et.duration_minutes = m
     et.exam_program_type = exam_program_type
-    et.save()
-    return JsonResponse({'success': True, 'message': 'Exam type updated.'})
+    try:
+        et.save()
+        return JsonResponse({'success': True, 'message': 'Exam type updated.'})
+    except IntegrityError:
+        return JsonResponse({'success': False, 'message': 'An exam type with the same name, program type and duration already exists.'})
 
 
 @login_required
@@ -651,7 +657,7 @@ def course_template_excel(request):
     wb = Workbook()
     ws = wb.active
     ws.title = 'Courses'
-    headers = ['program', 'semester', 'course_code', 'course_name', 'course_type', 'specialisation']
+    headers = ['department', 'program', 'semester', 'course_code', 'course_name', 'course_type', 'specialisation']
     ws.append(headers)
     for i, h in enumerate(headers, start=1):
         ws.column_dimensions[get_column_letter(i)].width = 20
@@ -675,87 +681,112 @@ def course_template_excel(request):
 def course_import_excel(request):
     """
     Upload Excel and create Course rows.
-    Columns must be: program, semester, course_code, course_name, course_type, specialisation
+    Columns must be: Program, Semester, Code, Name, Type, Specialisation
     """
     f = request.FILES.get('file')
     if not f:
         return JsonResponse({'success': False, 'message': 'No file uploaded.'}, status=400)
 
-    wb = load_workbook(filename=f, data_only=True)
-    ws = wb.active
+    try:
+        wb = load_workbook(filename=f, data_only=True)
+        ws = wb.active
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Error reading Excel: {str(e)}'}, status=400)
 
+    # Verify headers
     header_row = [str(c.value).strip().lower() if c.value is not None else '' for c in next(ws.iter_rows(min_row=1, max_row=1))]
-    required = ['program', 'semester', 'course_code', 'course_name', 'course_type', 'specialisation']
-    if header_row[: len(required)] != required:
+    required = ['department', 'program', 'semester', 'code', 'name', 'type', 'specialisation']
+    
+    # Check if all required headers are present in the first row
+    found_all = True
+    for r in required:
+        if r not in header_row:
+            found_all = False
+            break
+            
+    if not found_all:
         return JsonResponse(
             {
                 'success': False,
-                'message': 'Invalid template headers. Download the template and try again.',
-                'expected': required,
+                'message': f'Invalid columns. Required: {", ".join(required)}',
                 'found': header_row,
             },
             status=400,
         )
+
+    # Create mapping of head name to column index
+    col_map = {name: i for i, name in enumerate(header_row)}
 
     imported = 0
     failed = 0
     errors = []
 
     type_map = {lbl.lower(): key for key, lbl in Course.COURSE_TYPE_CHOICES}
-    # allow "Core" / "Lab" etc.
 
     for idx, row in enumerate(ws.iter_rows(min_row=2), start=2):
-        program_name = (row[0].value or '').strip() if row[0].value is not None else ''
-        semester_raw = row[1].value
-        code = (row[2].value or '').strip() if row[2].value is not None else ''
-        name = (row[3].value or '').strip() if row[3].value is not None else ''
-        ctype_raw = (row[4].value or '').strip() if row[4].value is not None else ''
-        spec_name = (row[5].value or '').strip() if row[5].value is not None else ''
-
-        if not program_name or not name:
-            failed += 1
-            errors.append({'row': idx, 'reason': 'Missing program or course_name'})
-            continue
-        prog = Program.objects.filter(name__iexact=program_name).first()
-        if not prog:
-            failed += 1
-            errors.append({'row': idx, 'reason': f'Unknown program: {program_name}'})
-            continue
         try:
-            sem = int(semester_raw)
-        except Exception:
-            sem = 1
-        if sem < 1 or sem > int(prog.total_semesters):
-            failed += 1
-            errors.append({'row': idx, 'reason': f'Invalid semester: {semester_raw}'})
-            continue
+            dept_name = (row[col_map['department']].value or '').strip() if row[col_map['department']].value is not None else ''
+            program_name = (row[col_map['program']].value or '').strip() if row[col_map['program']].value is not None else ''
+            semester_raw = row[col_map['semester']].value
+            code = (row[col_map['code']].value or '').strip() if row[col_map['code']].value is not None else ''
+            name = (row[col_map['name']].value or '').strip() if row[col_map['name']].value is not None else ''
+            ctype_raw = (row[col_map['type']].value or '').strip() if row[col_map['type']].value is not None else ''
+            spec_name = (row[col_map['specialisation']].value or '').strip() if row[col_map['specialisation']].value is not None else ''
 
-        ctype_key = type_map.get(ctype_raw.lower())
-        if not ctype_key:
-            # allow already-keyed value like "core"
-            ctype_key = ctype_raw.lower()
-        if ctype_key not in dict(Course.COURSE_TYPE_CHOICES):
-            failed += 1
-            errors.append({'row': idx, 'reason': f'Invalid course_type: {ctype_raw}'})
-            continue
-
-        spec_id = None
-        if spec_name:
-            spec = Specialisation.objects.filter(program=prog, name__iexact=spec_name).first()
-            if not spec:
+            if not dept_name or not program_name or not name:
                 failed += 1
-                errors.append({'row': idx, 'reason': f'Unknown specialisation: {spec_name}'})
+                errors.append({'row': idx, 'reason': 'Missing Department, Program or Name'})
                 continue
-            spec_id = spec.id
 
-        Course.objects.create(
-            program=prog,
-            semester=sem,
-            code=code,
-            name=name,
-            course_type=ctype_key,
-            specialisation_id=spec_id,
-        )
-        imported += 1
+            dept = Department.objects.filter(name__iexact=dept_name).first()
+            if not dept:
+                failed += 1
+                errors.append({'row': idx, 'reason': f'Department not found: {dept_name}'})
+                continue
+
+            prog = Program.objects.filter(department=dept, name__iexact=program_name).first()
+            if not prog:
+                failed += 1
+                errors.append({'row': idx, 'reason': f'Unknown program: {program_name} in department {dept_name}'})
+                continue
+
+            try:
+                sem = int(semester_raw)
+            except Exception:
+                sem = 1
+            if sem < 1 or sem > int(prog.total_semesters):
+                failed += 1
+                errors.append({'row': idx, 'reason': f'Invalid semester: {semester_raw}'})
+                continue
+
+            # Default to core if type not provided or invalid
+            ctype_key = type_map.get(ctype_raw.lower())
+            if not ctype_key:
+                ctype_key = ctype_raw.lower() if ctype_raw else 'core'
+                
+            if ctype_key not in dict(Course.COURSE_TYPE_CHOICES):
+                ctype_key = 'core'
+
+            spec_id = None
+            if spec_name:
+                spec = Specialisation.objects.filter(program=prog, name__iexact=spec_name).first()
+                if not spec:
+                    failed += 1
+                    errors.append({'row': idx, 'reason': f'Unknown specialisation: {spec_name}'})
+                    continue
+                spec_id = spec.id
+
+            Course.objects.create(
+                program=prog,
+                semester=sem,
+                code=code,
+                name=name,
+                course_type=ctype_key,
+                specialisation_id=spec_id,
+            )
+            imported += 1
+        except Exception as e:
+            failed += 1
+            errors.append({'row': idx, 'reason': str(e)})
 
     return JsonResponse({'success': True, 'imported': imported, 'failed': failed, 'errors': errors})

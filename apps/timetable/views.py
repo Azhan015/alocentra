@@ -35,6 +35,7 @@ def _grid_rows_for_builder():
                     'department_name': prog.department.name,
                     'semester': sem,
                     'row_key': f'{prog.id}-{sem}',
+                    'program_type': prog.program_type,
                 }
             )
     return rows
@@ -107,9 +108,9 @@ def timetable_builder(request, id=None):
     context = {
         'timetable': timetable,
         'exam_types': exam_types,
-        'grid_rows_json': json.dumps(grid_rows),
-        'academic_courses_json': json.dumps(academic_courses, default=str),
-        'existing_cells_json': json.dumps(existing_cells, default=str),
+        'grid_rows_json': json.dumps(grid_rows,default=str,ensure_ascii=False),
+        'academic_courses_json': json.dumps(academic_courses, default=str,ensure_ascii=False),
+        'existing_cells_json': json.dumps(existing_cells, default=str,ensure_ascii=False),
         'permissions': get_user_permissions(request.user),
     }
     return render(request, 'timetable/builder.html', context)
