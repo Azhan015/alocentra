@@ -54,6 +54,10 @@ def add_faculty(request):
         if not name or not designation:
             return JsonResponse({'success': False, 'message': 'Name and designation are required'})
         
+        # Validate email if provided
+        if email and not email.lower().endswith('@sfscollege.in'):
+            return JsonResponse({'success': False, 'message': 'Email must be a valid sfscollege.in address'})
+        
         Faculty.objects.create(name=name, designation=designation, email=email, department=department, created_by=request.user)
         return JsonResponse({'success': True, 'message': 'Faculty added successfully'})
     except Exception as e:
@@ -71,8 +75,14 @@ def edit_faculty(request, id):
     elif request.method == 'POST':
         faculty.name = request.POST.get('name')
         faculty.designation = request.POST.get('designation')
-        faculty.email = request.POST.get('email')
+        email = request.POST.get('email')
         faculty.department = request.POST.get('department')
+        
+        # Validate email if provided
+        if email and not email.lower().endswith('@sfscollege.in'):
+            return JsonResponse({'success': False, 'message': 'Email must be a valid sfscollege.in address'})
+        
+        faculty.email = email
         faculty.save()
         return JsonResponse({'success': True, 'message': 'Faculty updated'})
 
@@ -113,6 +123,11 @@ def import_faculty(request):
             email = str(f.get('email')).strip() if f.get('email') else ''
             
             if not name or not designation:
+                continue
+            
+            # Validate email if provided
+            if email and not email.lower().endswith('@sfscollege.in'):
+                skipped += 1
                 continue
             
             # Avoid exact duplicates

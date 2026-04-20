@@ -264,6 +264,16 @@
         const email = document.getElementById('facEmail').value;
         const url = id ? `/faculty/${id}/edit/` : `/faculty/add/`;
 
+        // Validate email if provided
+        if (email && !email.toLowerCase().endsWith('@sfscollege.in')) {
+            if (typeof showToast === 'function') {
+                showToast('Email must be a valid sfscollege.in address', 'error');
+            } else {
+                alert('Email must be a valid sfscollege.in address');
+            }
+            return;
+        }
+
         const fd = new FormData();
         fd.append('name', name);
         fd.append('designation', desig);

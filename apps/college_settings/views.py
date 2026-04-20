@@ -573,6 +573,8 @@ def exam_type_add(request):
     raw_h = request.POST.get('duration_hours', '0')
     raw_m = request.POST.get('duration_minutes', '0')
     exam_program_type = (request.POST.get('exam_program_type') or '').strip()
+    default_start_time_raw = (request.POST.get('default_start_time') or '').strip()
+ 
     try:
         h = max(0, min(int(raw_h), 5))
     except (TypeError, ValueError):
@@ -583,18 +585,34 @@ def exam_type_add(request):
             m = 0
     except (TypeError, ValueError):
         m = 0
+ 
     if not name:
         return JsonResponse({'success': False, 'message': 'Name is required.'})
+ 
+    # Parse optional default start time (expected as "HH:MM")
+    default_start_time = None
+    if default_start_time_raw:
+        from datetime import time as dtime
+        try:
+            parts = default_start_time_raw.split(':')
+            default_start_time = dtime(int(parts[0]), int(parts[1]))
+        except Exception:
+            default_start_time = None
+ 
     try:
         ExamType.objects.create(
             name=name,
             duration_hours=h,
             duration_minutes=m,
             exam_program_type=exam_program_type,
+            default_start_time=default_start_time,
         )
         return JsonResponse({'success': True, 'message': 'Exam type added.'})
     except IntegrityError:
-        return JsonResponse({'success': False, 'message': 'An exam type with the same name, program type and duration already exists.'})
+        return JsonResponse({
+            'success': False,
+            'message': 'An exam type with the same name, program type and duration already exists.',
+        })
 
 
 @login_required
@@ -603,18 +621,20 @@ def exam_type_add(request):
 def exam_type_edit(request, pk):
     et = get_object_or_404(ExamType, pk=pk)
     if request.method == 'GET':
-        return JsonResponse(
-            {
-                'name': et.name,
-                'duration_hours': et.duration_hours,
-                'duration_minutes': et.duration_minutes,
-                'exam_program_type': et.exam_program_type,
-            }
-        )
+        return JsonResponse({
+            'name': et.name,
+            'duration_hours': et.duration_hours,
+            'duration_minutes': et.duration_minutes,
+            'exam_program_type': et.exam_program_type,
+            'default_start_time': et.default_start_time.strftime('%H:%M') if et.default_start_time else '',
+        })
+ 
     name = (request.POST.get('name') or '').strip()
     raw_h = request.POST.get('duration_hours', '0')
     raw_m = request.POST.get('duration_minutes', '0')
     exam_program_type = (request.POST.get('exam_program_type') or '').strip()
+    default_start_time_raw = (request.POST.get('default_start_time') or '').strip()
+ 
     if not name:
         return JsonResponse({'success': False, 'message': 'Name is required.'})
     try:
@@ -627,15 +647,30 @@ def exam_type_edit(request, pk):
             m = 0
     except (TypeError, ValueError):
         m = 0
+ 
+    default_start_time = None
+    if default_start_time_raw:
+        from datetime import time as dtime
+        try:
+            parts = default_start_time_raw.split(':')
+            default_start_time = dtime(int(parts[0]), int(parts[1]))
+        except Exception:
+            default_start_time = None
+ 
     et.name = name
     et.duration_hours = h
     et.duration_minutes = m
     et.exam_program_type = exam_program_type
+    et.default_start_time = default_start_time
+ 
     try:
         et.save()
         return JsonResponse({'success': True, 'message': 'Exam type updated.'})
     except IntegrityError:
-        return JsonResponse({'success': False, 'message': 'An exam type with the same name, program type and duration already exists.'})
+        return JsonResponse({
+            'success': False,
+            'message': 'An exam type with the same name, program type and duration already exists.',
+        })
 
 
 @login_required

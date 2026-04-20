@@ -1,224 +1,652 @@
-# AloCentra: Deep-Dive Deployment & Environment Guide
+# AloCentra — Complete Deployment & Environment Guide
 
-This guide contains everything you need to know about setting up and running **AloCentra** on your local machine and in a production host environment.
+> **One file. Zero guesswork.**  
+> Follow every section from top to bottom. By the end you will have AloCentra running
+> either on your laptop or on a free cloud server — or both.
 
 ---
 
-## 1. Environment Variables (`.env`) & The Database Connection
+## Table of Contents
 
-The entire application relies on environment variables defined in a `.env` file at the root of the project. This prevents sensitive information (like passwords) from being pushed to source control (GitHub/GitLab).
+1. [Understanding the `.env` File](#1-understanding-the-env-file)
+2. [How to Get Every Value — Step by Step](#2-how-to-get-every-value--step-by-step)
+3. [Running Locally with Docker](#3-running-locally-with-docker)
+4. [Free Cloud Deployment Options](#4-free-cloud-deployment-options)
+   - 4A. [Railway (Recommended — Easiest)](#4a-railway-recommended--easiest)
+   - 4B. [Render.com](#4b-rendercom)
+   - 4C. [Fly.io](#4c-flyio)
+   - 4D. [Oracle Cloud Always Free (Most Powerful)](#4d-oracle-cloud-always-free-most-powerful)
+5. [Post-Deployment Checklist](#5-post-deployment-checklist)
+6. [Troubleshooting](#6-troubleshooting)
 
-### Database Configuration (PostgreSQL)
+---
 
-When running the project via Docker, the `docker-compose.yml` file uses the official `postgres` image to automatically spin up a database server. 
+## 1. Understanding the `.env` File
 
-Here are the critical keys and how they correlate:
+Your `.env` file lives at the **root of the project** (same folder as `manage.py`).  
+It is listed in `.gitignore` — it will **never** be pushed to GitHub. That is intentional.
 
-- `POSTGRES_DB`: The name of the database that will be created.
-- `POSTGRES_USER`: The superuser username for Postgres.
-- `POSTGRES_PASSWORD`: The password for the `POSTGRES_USER`.
-- `DATABASE_URL`: The full connection string mapped for Django to use.
+### Full `.env` Template
 
-**Example Local `.env` DB Vars:**
+Copy this block, paste it into a new file called `.env`, then fill in each value
+using Section 2 below.
+
+```env
+# ── Environment mode ──────────────────────────────────────────────────────────
+# "development"  → Django debug server, debug toolbar, verbose errors
+# "production"   → Gunicorn, no debug, strict security headers
+APP_ENV=development
+DJANGO_SETTINGS_MODULE=alocentra.settings.development
+
+# ── Django core ───────────────────────────────────────────────────────────────
+DJANGO_SECRET_KEY=REPLACE_WITH_GENERATED_KEY
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+
+# ── PostgreSQL (Docker creates this DB automatically from these values) ────────
+POSTGRES_DB=alocentra_db
+POSTGRES_USER=alocentra_user
+POSTGRES_PASSWORD=REPLACE_WITH_STRONG_PASSWORD
+DATABASE_URL=postgresql://alocentra_user:REPLACE_WITH_STRONG_PASSWORD@db:5432/alocentra_db
+
+# ── Redis / Celery ────────────────────────────────────────────────────────────
+REDIS_URL=redis://redis:6379/0
+
+# ── Email (Gmail App Password) ────────────────────────────────────────────────
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=yourgmail@gmail.com
+EMAIL_HOST_PASSWORD=REPLACE_WITH_16_CHAR_APP_PASSWORD
+DEFAULT_FROM_EMAIL=yourgmail@gmail.com
+
+# ── Frontend URL (used in invitation emails) ──────────────────────────────────
+FRONTEND_URL=http://localhost:8000
+
+# ── Optional port overrides (local only) ─────────────────────────────────────
+DB_PORT=5433
+REDIS_PORT=6380
+```
+
+### Production differences (change these values when deploying)
+
+| Variable | Local value | Production value |
+|---|---|---|
+| `APP_ENV` | `development` | `production` |
+| `DJANGO_SETTINGS_MODULE` | `alocentra.settings.development` | `alocentra.settings.production` |
+| `DJANGO_DEBUG` | `True` | `False` |
+| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1` | `yourdomain.com,www.yourdomain.com` |
+| `DATABASE_URL` | points to `@db:5432` | points to cloud DB host |
+| `REDIS_URL` | `redis://redis:6379/0` | points to cloud Redis host |
+| `FRONTEND_URL` | `http://localhost:8000` | `https://yourdomain.com` |
+
+---
+
+## 2. How to Get Every Value — Step by Step
+
+### 2.1 `DJANGO_SECRET_KEY`
+
+This is a random 50-character string Django uses to sign cookies and tokens.
+**Never share it. Never commit it.**
+
+**Step 1:** Open any terminal where Python is available and run:
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(50))"
+```
+
+**Step 2:** Copy the output (looks like `abc123XYZ...`) and paste it as:
+```env
+DJANGO_SECRET_KEY=abc123XYZ...
+```
+
+If you do not have Python locally, use this site: https://djecrety.ir/  
+Click "Generate" and copy the result.
+
+---
+
+### 2.2 `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+
+When using Docker you **invent these yourself**. Docker reads the values and creates
+the database for you automatically on first run.
+
+**Rules for a good password:**
+- At least 16 characters
+- Mix of upper, lower, numbers, symbols (`@`, `!`, `#`)
+- Example: `AloC3ntra@Exam#2026`
+
+**Example block:**
 ```env
 POSTGRES_DB=alocentra_db
 POSTGRES_USER=alocentra_user
-POSTGRES_PASSWORD=supersecurepassword123
-
-# The connection string syntax is: postgresql://[USER]:[PASSWORD]@[HOST]:[PORT]/[DB_NAME]
-# "db" is the host because inside the Docker Network, services can resolve each other by their container names.
-DATABASE_URL=postgresql://alocentra_user:supersecurepassword123@db:5432/alocentra_db
+POSTGRES_PASSWORD=AloC3ntra@Exam#2026
+DATABASE_URL=postgresql://alocentra_user:AloC3ntra@Exam#2026@db:5432/alocentra_db
 ```
 
-### Django Configuration
-- `DJANGO_SECRET_KEY`: A random string used for cryptographic signing.
-- `DJANGO_DEBUG`: Set to `True` for Local development and `False` for Production!
-- `DJANGO_ALLOWED_HOSTS`: Comma-separated domains where your app will live (e.g. `localhost,127.0.0.1,api.mycollege.edu`).
-- `DJANGO_SETTINGS_MODULE`: Use `alocentra.settings.development` for local or `alocentra.settings.production` for LIVE.
-
-### Email & Celery Configuration
-- `REDIS_URL=redis://redis:6379/0`: Points Celery to the Redis broker.
-- Email backend uses standard SMTP (e.g., Gmail with App Passwords).
+> ⚠️ The `@db:5432` part stays exactly as `db:5432`.  
+> Inside Docker, the hostname `db` resolves to the Postgres container automatically.
 
 ---
 
-## 1.5 Where to Get These Values (Step-by-Step)
+### 2.3 `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD`
 
-If you're wondering *how* to generate, find, or create these specific `.env` values so your project runs perfectly, here is a detailed breakdown for each:
+AloCentra sends invitation emails via Gmail SMTP. Follow these exact steps:
 
-### 1. DJANGO_SECRET_KEY
-The Secret Key is used to cryptographically sign sessions and password resets. **Never share this value.**
-- **How to get it:** You can generate a truly random secret key by opening your terminal or command prompt (if Python is installed) and running:
-  ```bash
-  python -c "import secrets; print(secrets.token_urlsafe(50))"
-  ```
-  Copy the generated string and paste it into your `.env` file as your `DJANGO_SECRET_KEY`.
+**Step 1:** Log into your Google account at https://myaccount.google.com
 
-### 2. Database Credentials (POSTGRES_DB, USER, PASSWORD)
-If you are running the project using Docker, you get to **make these up yourself!**
-- **How to get it:** Simply invent a strong password, a username, and a database name. Enter them into the `.env` file. When you launch docker, the system will automatically read these variables and create a brand-new PostgreSQL database right on your machine matching the exact credentials you provided. You don't need to install Postgres locally or configure anything else.
-- **Example Creation:**
-  `POSTGRES_DB=alocentradb`
-  `POSTGRES_USER=myadmin`
-  `POSTGRES_PASSWORD=P@ssw0rd2026`
-  Then, your `DATABASE_URL` becomes: `postgresql://myadmin:P@ssw0rd2026@db:5432/alocentradb`. 
-  *(Note: The `@db:5432` part stays exactly as "db:5432" because Docker uses "db" as the internal network name to link the web app to the database container).*
+**Step 2:** Click **Security** in the left sidebar.
 
-### 3. EMAIL_HOST_USER and EMAIL_HOST_PASSWORD
-For the application to send "Invite User" emails, it needs to log into an email account on your behalf. We recommend using a standard Gmail account.
-- **How to get it:** 
-  1. Log into your Google Account and go to **Account Settings -> Security**.
-  2. Enable **2-Step Verification** (if not already enabled).
-  3. Search for **App passwords** in the top settings search bar (or go inside 2-Step Verification settings and scroll down to "App passwords").
-  4. Create a new App Password (select "Other (Custom name)" and type "AloCentra Exam App").
-  5. Google will generate a 16-character password in a yellow box (e.g., `abcd efgh ijkl mnop`).
-  6. **Remove all the spaces** and paste that 16-letter code into `EMAIL_HOST_PASSWORD`. Finally, put your normal Gmail address into `EMAIL_HOST_USER` and `DEFAULT_FROM_EMAIL`.
+**Step 3:** Scroll down to **"How you sign in to Google"** and click **2-Step Verification**.
+Enable it if it is not already on (required for App Passwords to work).
 
-### 4. DJANGO_ALLOWED_HOSTS and FRONTEND_URL
-- **Local Development (Testing on your laptop):** 
-  - `DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0`
-  - `FRONTEND_URL=http://localhost:8000`
-- **When Hosting on a Server/Cloud (DigitalOcean, AWS, etc.):** 
-  - Replace these with your server's Public IP address or the actual domain name you bought (e.g., `DJANGO_ALLOWED_HOSTS=192.168.1.100,alocentra.mycollege.edu` and `FRONTEND_URL=https://alocentra.mycollege.edu`).
+**Step 4:** After enabling 2-Step Verification, go back to the Security page
+and search for **"App passwords"** in the search bar at the top.
 
----
+**Step 5:** Click **App passwords**. If you cannot find it, visit directly:
+https://myaccount.google.com/apppasswords
 
-## 2. Running Locally with Docker (Step-by-Step for Beginners)
+**Step 6:** In the dropdown **"Select app"** choose **"Other (Custom name)"**
+and type `AloCentra`. Click **Generate**.
 
-Docker simplifies everything by encapsulating PostgreSQL, Redis, Celery (background tasks), and the Django App into separate containers so you don't have to install them individually on your computer.
+**Step 7:** Google shows a 16-character password in a yellow box like:
+```
+abcd efgh ijkl mnop
+```
 
-If you have never used Docker before, read these steps carefully from start to finish.
-
-### Step 1: Install Docker Desktop
-Before you can run any Docker commands, your computer needs the Docker Engine installed.
-1. Go to [https://www.docker.com/products/docker-desktop/](https://www.docker.com/products/docker-desktop/) in your web browser.
-2. Click the **Download for Windows** (or Mac) button.
-3. Run the installer you downloaded. Keep all the default settings checked (especially WSL 2 backend if you are on Windows).
-4. Restart your computer if it asks you to.
-5. After your computer restarts, **open the Docker Desktop application** from your Start Menu. 
-6. Wait for the icon in your system tray (bottom right corner) to turn green or say "Engine Running". Keep this application open in the background.
-
-### Step 2: Open Your Terminal
-You need a place to type commands.
-1. Open **VS Code** (or your preferred editor) and open the `alocentra` project folder.
-2. Go to the top menu, click **Terminal**, then **New Terminal**.
-3. *Make sure the terminal path shows that you are inside the `alocentra` folder (e.g., `E:\AC\alocentra>`).*
-
-### Step 3: Create your `.env` File
-Docker needs the environment variables to build the database.
-1. Look at the files in your project folder. You will see a file named `.env.example`.
-2. Right-click that file, select **Copy**, then right-click in the empty space and select **Paste**.
-3. Rename the newly pasted file to exactly `.env` (with the dot at the front).
-4. Open your new `.env` file and verify that the values inside look exactly like the ones discussed in Section 1.5 above. (You can leave the default passwords if you are just testing it on your laptop).
-
-### Step 4: Build and Start the Containers
-Now we tell Docker to read the `docker-compose.yml` file, download all the necessary software, and link it together.
-1. In your VS Code terminal, type the following command exactly:
-   ```bash
-   docker compose up -d --build
-   ```
-2. Press **Enter**.
-3. You will see Docker downloading various "layers" and fetching Python, Postgres, and Redis. This might take 5-10 minutes the very first time depending on your internet speed.
-4. When it finishes, it will print messages saying things like `Started alocentra-db-1`, `Started alocentra-web-1`.
-
-### Step 5: Migrate the Database (Tell Django to create the tables)
-Even though the database server is running, Django needs to create its specific tables (like Users, Faculty, Rooms) inside that database.
-1. In the exact same terminal, type:
-   ```bash
-   docker compose exec web python manage.py migrate
-   ```
-2. Press **Enter**. You will see a long list of green text saying `Applying accounts.0001_initial... OK`.
-
-### Step 6: Access Your Live Application!
-Your server is now actively running in the background.
-1. Open your web browser (Chrome, Edge, Safari).
-2. In the address bar at the top, type `http://localhost:8000` and hit Enter.
-3. You will see the gorgeous AloCentra landing page! Click "Register" to create the very first Controller of Examinations (COE) account, which will have full admin privileges.
-
-### How to Stop the Project Later
-When you are done testing for the day and want to turn off the server so it doesn't use your computer's RAM:
-1. In your terminal, type:
-   ```bash
-   docker compose down
-   ```
-2. Next time you want to start it back up, just open Docker Desktop, open your terminal, and type `docker compose up -d` (you don't need `--build` or `migrate` again unless you changed the Python code!).
-
----
-
-## 3. Hosting in Production (Real Server)
-
-If you are deploying this to a real server (like an AWS EC2 instance, DigitalOcean Droplet, Linode, etc.), follow these steps:
-
-### A. Server Setup
-1. **Provision a Linux Server** (Ubuntu 22.04 LTS is standard).
-2. **Install Docker and Docker Compose**.
-   ```bash
-   sudo apt update
-   sudo apt install docker.io docker-compose-v2 -y
-   ```
-3. **Clone your repository** to the server (e.g., inside `/opt/alocentra`).
-
-### B. Production `.env`
-Create a `.env` in the server project root. **CRITICAL DIFFERENCES:**
+**Step 8:** **Remove the spaces** and place the 16 letters in your `.env`:
 ```env
-DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=192.168.1.100,yourcustomdomain.com
+EMAIL_HOST_USER=yourgmail@gmail.com
+EMAIL_HOST_PASSWORD=abcdefghijklmnop
+DEFAULT_FROM_EMAIL=yourgmail@gmail.com
+```
+
+> 💡 If you do not want to use Gmail in development, set:
+> ```env
+> EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+> ```
+> Invitation emails will print to the terminal instead of actually sending.
+
+---
+
+### 2.4 `DJANGO_ALLOWED_HOSTS`
+
+- **Local:** `localhost,127.0.0.1,0.0.0.0` — no changes needed
+- **Cloud server with IP:** `192.168.1.100` — add your server's public IP
+- **Custom domain:** `alocentra.mycollege.edu,www.alocentra.mycollege.edu`
+
+Separate multiple values with commas. No spaces.
+
+---
+
+## 3. Running Locally with Docker
+
+### Prerequisites
+
+- Windows 10/11 or macOS or Linux
+- Docker Desktop installed (https://www.docker.com/products/docker-desktop/)
+
+### Step-by-Step
+
+**Step 1 — Install Docker Desktop**
+
+1. Go to https://www.docker.com/products/docker-desktop/
+2. Download for your OS and run the installer.
+3. On Windows, enable **WSL 2 backend** when prompted.
+4. Restart your computer if asked.
+5. Open Docker Desktop and wait for the green "Engine Running" indicator in the taskbar.
+
+**Step 2 — Clone or open the project**
+
+```bash
+# If you are cloning for the first time:
+git clone https://github.com/YOURNAME/alocentra.git
+cd alocentra
+
+# If the project is already on your machine, just open a terminal inside it.
+```
+
+**Step 3 — Create your `.env` file**
+
+1. In the project root, find the file `.env.example`.
+2. Copy it and rename the copy to exactly `.env`.
+3. Open `.env` and fill every value using Section 2 above.
+4. Keep `APP_ENV=development` for local use.
+
+**Step 4 — Build and start all containers**
+
+```bash
+docker compose up -d --build
+```
+
+- This downloads Postgres, Redis, and Python images (first time only, ~5-10 minutes).
+- After completion you will see: `Started alocentra-web-1`, `Started alocentra-db-1`, etc.
+
+**Step 5 — Run database migrations**
+
+```bash
+docker compose exec web python manage.py migrate
+```
+
+You should see many lines ending in `OK`.
+
+**Step 6 — Open the app**
+
+Navigate to http://localhost:8000 in your browser.
+Click **Register** to create the first COE account.
+
+**Step 7 — Stopping the server**
+
+```bash
+docker compose down
+```
+
+Next time: `docker compose up -d` (no `--build` needed unless you changed Python files).
+
+---
+
+## 4. Free Cloud Deployment Options
+
+All options below are **100% free** at the tier described. You do not need a credit card
+for options 4A and 4B. Option 4D requires a credit card for identity verification only —
+no charges are made.
+
+---
+
+### 4A. Railway (Recommended — Easiest)
+
+Railway gives you $5 of credit per month on the Hobby plan (free) which is enough
+for a small Django app + Postgres + Redis.
+
+**What you get free:** 512 MB RAM, Postgres, Redis, automatic HTTPS, custom domain.
+
+#### Step 1 — Create a Railway account
+
+1. Go to https://railway.app
+2. Click **Login** → **Login with GitHub**
+3. Authorise Railway to access your GitHub.
+
+#### Step 2 — Push your code to GitHub
+
+```bash
+# From inside your alocentra folder:
+git init
+git add .
+git commit -m "initial commit"
+git remote add origin https://github.com/YOURNAME/alocentra.git
+git push -u origin main
+```
+
+#### Step 3 — Create a new Railway project
+
+1. On the Railway dashboard click **New Project**.
+2. Select **Deploy from GitHub repo**.
+3. Choose your `alocentra` repo.
+4. Railway detects it is a Python project and starts building.
+
+#### Step 4 — Add Postgres
+
+1. Inside your Railway project click **+ New**.
+2. Select **Database → Add PostgreSQL**.
+3. Railway creates a Postgres instance and gives you a `DATABASE_URL`.
+4. Click the Postgres service → **Variables** tab → copy `DATABASE_URL`.
+
+#### Step 5 — Add Redis
+
+1. Click **+ New → Database → Add Redis**.
+2. Copy the `REDIS_URL` from the Redis service's Variables tab.
+
+#### Step 6 — Set environment variables
+
+Click your **web service** → **Variables** tab → **Raw Editor** and paste:
+
+```env
+APP_ENV=production
 DJANGO_SETTINGS_MODULE=alocentra.settings.production
-DJANGO_SECRET_KEY=MakeThisAVeryLongRandomString12345!
-
-POSTGRES_DB=alocentra_prod
-POSTGRES_USER=prod_user
-POSTGRES_PASSWORD=generate_a_strong_password_here
-DATABASE_URL=postgresql://prod_user:generate_a_strong_password_here@db:5432/alocentra_prod
+DJANGO_SECRET_KEY=<generate one with python -c "import secrets; print(secrets.token_urlsafe(50))">
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=${{RAILWAY_PUBLIC_DOMAIN}}
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+REDIS_URL=${{Redis.REDIS_URL}}
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=yourgmail@gmail.com
+EMAIL_HOST_PASSWORD=your16charapppassword
+DEFAULT_FROM_EMAIL=yourgmail@gmail.com
+FRONTEND_URL=https://${{RAILWAY_PUBLIC_DOMAIN}}
 ```
 
-### C. Run the Production Compose config
-Instead of the standard `docker-compose.yml`, which uses `runserver`, use the production compose file that uses `Gunicorn` (a battle-tested production web server).
+> Railway uses `${{ServiceName.VARIABLE}}` syntax to reference other services' variables automatically.
+
+#### Step 7 — Set the start command
+
+In your web service → **Settings** → **Start Command**:
+```
+python manage.py migrate && gunicorn alocentra.wsgi:application --bind 0.0.0.0:$PORT --workers 3
+```
+
+#### Step 8 — Deploy
+
+Click **Deploy**. Railway builds your Docker image and starts the service.
+Once it shows **Active**, click the domain link to open your app.
+
+#### Step 9 — Create COE account
+
+Visit `https://your-project.up.railway.app` and click Register.
+
+---
+
+### 4B. Render.com
+
+Render offers a free web service (750 hours/month) and a free PostgreSQL database
+(valid for 90 days, then $7/month — use Railway if you need it longer).
+
+#### Step 1 — Create account
+
+1. Go to https://render.com
+2. Sign up with GitHub.
+
+#### Step 2 — Create a Web Service
+
+1. Dashboard → **New → Web Service**
+2. Connect your GitHub repo `alocentra`.
+3. Fill in:
+   - **Environment:** Docker
+   - **Region:** nearest to you
+   - **Instance Type:** Free
+
+#### Step 3 — Set environment variables
+
+In the **Environment** section of your web service add each variable from the
+Production list in Section 1. For `DATABASE_URL` use the connection string from
+Step 4 below.
+
+#### Step 4 — Create a PostgreSQL database
+
+1. Dashboard → **New → PostgreSQL**
+2. Give it a name like `alocentra-db`.
+3. **Instance type:** Free
+4. After creation, copy the **Internal Database URL** and paste it as `DATABASE_URL`
+   in your web service environment variables.
+
+#### Step 5 — Create a Redis instance
+
+1. Dashboard → **New → Redis**
+2. Free tier → Create.
+3. Copy the **Internal Redis URL** and paste it as `REDIS_URL`.
+
+#### Step 6 — Deploy
+
+Render auto-deploys whenever you push to GitHub. Your first deploy will take 3-5
+minutes. After it completes, click the `.onrender.com` URL.
+
+#### Step 7 — Run migrations (one time only)
+
+On the Render dashboard → your web service → **Shell** tab:
+```bash
+python manage.py migrate
+```
+
+---
+
+### 4C. Fly.io
+
+Fly gives you 3 shared-CPU VMs and 3 GB persistent storage free, always.
+
+#### Step 1 — Install Fly CLI
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+# macOS / Linux
+curl -L https://fly.io/install.sh | sh
+
+# Windows PowerShell (run as Admin)
+iwr https://fly.io/install.ps1 -useb | iex
 ```
 
-### D. Setup a Reverse Proxy (Nginx)
-The Django app will run on port `8000`. You want users to access it on port `80` (HTTP) or `443` (HTTPS). Install Nginx to proxy passes the requests to Docker.
+#### Step 2 — Sign up and log in
 
 ```bash
-sudo apt install nginx -y
-sudo nano /etc/nginx/sites-available/alocentra
+fly auth signup    # creates a free account
+# OR if you already have one:
+fly auth login
 ```
-Add the following configuration:
-```nginx
-server {
-    listen 80;
-    server_name yourcustomdomain.com;
 
-    location / {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
+#### Step 3 — Launch the app
 
-    # Static files routing
-    location /static/ {
-        alias /opt/alocentra/staticfiles/;
-    }
-}
-```
-Enable the site and restart Nginx:
+Inside your project folder:
 ```bash
-sudo ln -s /etc/nginx/sites-available/alocentra /etc/nginx/sites-enabled/
-sudo systemctl restart nginx
+fly launch
 ```
 
-### E. Collect Static and Migrate (In Production)
+Answer the prompts:
+- App name: `alocentra` (or any name)
+- Region: choose the closest one
+- PostgreSQL: **yes** (Fly creates a free Postgres cluster)
+- Redis: **yes** (Fly creates a free Upstash Redis)
+- Deploy now: **no** (we need to set env vars first)
+
+#### Step 4 — Set environment variables
+
 ```bash
-# Apply Database Migrations
-docker compose -f docker-compose.prod.yml exec web python manage.py migrate
-
-# Gather all CSS/JS files into the staticfiles directory for Nginx to serve
-docker compose -f docker-compose.prod.yml exec web python manage.py collectstatic --noinput
+fly secrets set \
+  APP_ENV=production \
+  DJANGO_SETTINGS_MODULE=alocentra.settings.production \
+  DJANGO_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(50))')" \
+  DJANGO_DEBUG=False \
+  DJANGO_ALLOWED_HOSTS=alocentra.fly.dev \
+  EMAIL_HOST=smtp.gmail.com \
+  EMAIL_PORT=587 \
+  EMAIL_USE_TLS=True \
+  EMAIL_HOST_USER=yourgmail@gmail.com \
+  EMAIL_HOST_PASSWORD=your16charapppassword \
+  DEFAULT_FROM_EMAIL=yourgmail@gmail.com \
+  FRONTEND_URL=https://alocentra.fly.dev
 ```
 
-You are now successfully hosted! Secure the site with an SSL certificate using `certbot` and you are good to go.
+The `DATABASE_URL` and `REDIS_URL` are set automatically by Fly when you created
+the Postgres and Redis services in Step 3.
+
+#### Step 5 — Deploy
+
+```bash
+fly deploy
+```
+
+#### Step 6 — Migrate and open
+
+```bash
+fly ssh console -C "python manage.py migrate"
+fly open
+```
+
+---
+
+### 4D. Oracle Cloud Always Free (Most Powerful)
+
+Oracle gives you **2 AMD Compute VMs** with 1 GB RAM each and **200 GB block storage**
+**forever** — no expiry, no credit card charges after verification.
+
+This option requires the most setup but gives you the most power and control.
+
+#### Step 1 — Create Oracle Cloud account
+
+1. Go to https://www.oracle.com/cloud/free/
+2. Click **Start for free**.
+3. Fill in your details. A credit card is required for **identity verification only**.
+   You will not be charged if you stay within Always Free resources.
+4. Select your home region (cannot be changed later — pick closest to your users).
+
+#### Step 2 — Create a VM instance
+
+1. Dashboard → **Compute → Instances → Create Instance**
+2. Shape: **VM.Standard.E2.1.Micro** (Always Free)
+3. Image: **Ubuntu 22.04 LTS**
+4. Networking: create a new VCN or use default. Enable a public IP.
+5. SSH keys: paste your public SSH key (generate with `ssh-keygen -t ed25519`)
+6. Click **Create**.
+7. Wait 2-3 minutes. Note the **Public IP address**.
+
+#### Step 3 — Open firewall ports
+
+1. In Oracle Cloud → your instance → **Subnet** → **Security List**
+2. Add **Ingress Rules**:
+   - Source: `0.0.0.0/0`, Protocol: TCP, Port: `80`
+   - Source: `0.0.0.0/0`, Protocol: TCP, Port: `443`
+
+Also run this on the VM to open the OS firewall:
+```bash
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+sudo netfilter-persistent save
+```
+
+#### Step 4 — SSH into your VM and install Docker
+
+```bash
+ssh ubuntu@YOUR_PUBLIC_IP
+
+# Once inside the VM:
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y docker.io docker-compose-v2 git
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+#### Step 5 — Clone your project
+
+```bash
+sudo mkdir -p /opt/alocentra
+sudo chown $USER:$USER /opt/alocentra
+cd /opt/alocentra
+git clone https://github.com/YOURNAME/alocentra.git .
+```
+
+#### Step 6 — Create `.env` for production
+
+```bash
+nano .env
+```
+
+Paste the production template from Section 1, filling in all values.
+Change:
+- `APP_ENV=production`
+- `DJANGO_SETTINGS_MODULE=alocentra.settings.production`
+- `DJANGO_DEBUG=False`
+- `DJANGO_ALLOWED_HOSTS=YOUR_PUBLIC_IP` (or your domain)
+- `DATABASE_URL=postgresql://alocentra_user:PASSWORD@db:5432/alocentra_db`
+  (keep `@db:5432` — Docker internal networking)
+- `FRONTEND_URL=http://YOUR_PUBLIC_IP` (or `https://yourdomain.com`)
+
+Save with `Ctrl+O`, exit with `Ctrl+X`.
+
+#### Step 7 — Start production stack with Nginx
+
+```bash
+docker compose --profile production up -d --build
+```
+
+#### Step 8 — Run migrations
+
+```bash
+docker compose exec web python manage.py migrate
+```
+
+#### Step 9 — Get a free domain and HTTPS (optional but recommended)
+
+**Free domain:** https://www.freenom.com or https://freedns.afraid.org  
+Point the domain's A record to your Oracle VM public IP.
+
+**Free HTTPS with Let's Encrypt:**
+
+Edit `nginx/nginx.prod.conf` and replace `your_domain` with your actual domain.
+Then run Certbot:
+```bash
+docker compose --profile ssl run --rm certbot certonly \
+  --webroot -w /var/www/certbot \
+  -d yourdomain.com -d www.yourdomain.com \
+  --email youremail@gmail.com \
+  --agree-tos --no-eff-email
+```
+
+Uncomment the SSL lines in `nginx/nginx.prod.conf`, then:
+```bash
+docker compose --profile production restart nginx
+```
+
+Your site is now live at `https://yourdomain.com` with auto-renewing certificates.
+
+#### Step 10 — Auto-start on reboot
+
+```bash
+sudo crontab -e
+# Add this line:
+@reboot cd /opt/alocentra && docker compose --profile production up -d
+```
+
+---
+
+## 5. Post-Deployment Checklist
+
+After any deployment, verify these in order:
+
+- [ ] Homepage loads without errors
+- [ ] Register page appears (first COE registration open)
+- [ ] Create first COE account successfully
+- [ ] Dashboard shows Rooms, Faculty, Timetable cards
+- [ ] Add one test room manually
+- [ ] Invite a second user (verify email arrives)
+- [ ] Invited user can set password via link
+- [ ] Django admin works at `/admin/` (create a superuser first)
+- [ ] `DJANGO_DEBUG=False` in production (check no yellow error pages)
+- [ ] Static files load (CSS/JS styled correctly — not plain HTML)
+- [ ] HTTPS certificate valid (padlock in browser)
+
+**Create a Django superuser for /admin:**
+```bash
+# Docker:
+docker compose exec web python manage.py createsuperuser
+
+# Railway/Render shell:
+python manage.py createsuperuser
+
+# Fly.io:
+fly ssh console -C "python manage.py createsuperuser"
+```
+
+---
+
+## 6. Troubleshooting
+
+| Problem | Likely cause | Fix |
+|---|---|---|
+| `django.db.OperationalError` on startup | DB not ready yet | Wait 30 s, retry; check `DATABASE_URL` format |
+| Static files not loading in prod | `collectstatic` not run | Add `python manage.py collectstatic --noinput` to start command |
+| `ALLOWED_HOSTS` error | Domain not in env var | Add exact domain (no `https://`) to `DJANGO_ALLOWED_HOSTS` |
+| Celery not sending emails | Redis not reachable | Check `REDIS_URL`; ensure Redis service is running |
+| `502 Bad Gateway` from Nginx | Gunicorn not started | Check `docker compose logs web` |
+| App password email rejected | 2-Step not enabled | Enable 2-Step Verification first, then regenerate app password |
+| `SECRET_KEY` error | Default placeholder still set | Generate and replace `DJANGO_SECRET_KEY` in `.env` |
+| Port 8000 already in use | Another service on that port | Change `ports: - "8001:8000"` in compose or kill conflicting process |
+
+### Useful diagnostic commands
+
+```bash
+# View live logs from all containers
+docker compose logs -f
+
+# View only web logs
+docker compose logs -f web
+
+# Access Django shell
+docker compose exec web python manage.py shell
+
+# Check which containers are running
+docker compose ps
+
+# Restart only one service
+docker compose restart web
+
+# Hard reset (deletes all data — local dev only)
+docker compose down -v && docker compose up -d --build
+```

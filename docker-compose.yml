@@ -1,8 +1,23 @@
 version: '3.8'
 
+# ──────────────────────────────────────────────────────────────────────────────
+#  AloCentra – Unified Docker Compose
+#
+#  LOCAL DEV:
+#    docker compose up -d --build
+#    (APP_ENV defaults to "development" in .env)
+#
+#  PRODUCTION:
+#    Set APP_ENV=production in your .env and run:
+#    docker compose up -d --build
+# ──────────────────────────────────────────────────────────────────────────────
+
 services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   db:
     image: postgres:15-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -10,52 +25,110 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      - "${DB_PORT:-5433}:5432"          # only exposed locally; blocked by firewall in prod
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ── Redis ───────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
-      - "6380:6379"
+      - "${REDIS_PORT:-6380}:6379"
 
+  # ── Django web ──────────────────────────────────────────────────────────────
   web:
-    build: .
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/app
-      - media_data:/app/media
-    ports:
-      - "8000:8000"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_ENV: ${APP_ENV:-development}
+    restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      - .:/app                           # live-reload in dev; remove in prod if preferred
+      - media_data:/app/media
+      - static_volume:/app/staticfiles
+    ports:
+      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
 
+  # ── Celery worker ───────────────────────────────────────────────────────────
   celery:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_ENV: ${APP_ENV:-development}
     command: celery -A alocentra worker --loglevel=info
+    restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      - .:/app
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
+  # ── Celery Beat (scheduled tasks) ───────────────────────────────────────────
   celery-beat:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_ENV: ${APP_ENV:-development}
     command: celery -A alocentra beat --loglevel=info
+    restart: unless-stopped
     env_file:
       - .env
+    volumes:
+      - .:/app
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # ── Nginx reverse-proxy (production only; ignored locally by default) ────────
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    profiles:
+      - production                       # start with: docker compose --profile production up -d
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - static_volume:/app/staticfiles:ro
+      - media_data:/app/media:ro
+      - certbot-etc:/etc/letsencrypt:ro
+      - certbot-var:/var/lib/letsencrypt
+    depends_on:
+      - web
+
+  # ── Certbot (SSL – run once; uses profile "ssl") ────────────────────────────
+  certbot:
+    image: certbot/certbot
+    profiles:
+      - ssl
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
 
 volumes:
   postgres_data:
   media_data:
+  static_volume:
+  certbot-etc:
+  certbot-var:
