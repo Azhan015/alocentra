@@ -325,10 +325,16 @@
 <div class="modal fade" id="examModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); border-radius: 16px;">
-            <div class="modal-header border-0"><h5 class="modal-title" id="examModalTitle">Exam type</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="examModalTitle">Exam type</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
                 <input type="hidden" id="examId">
-                <div class="mb-3"><label class="form-label small text-secondary">Name</label><input type="text" class="form-control" id="examName"></div>
+                <div class="mb-3">
+                    <label class="form-label small text-secondary">Name</label>
+                    <input type="text" class="form-control" id="examName">
+                </div>
                 <div class="mb-3">
                     <label class="form-label small text-secondary">Program type</label>
                     <select class="form-select" id="examProgramType">
@@ -337,7 +343,7 @@
                 </div>
                 <div class="row g-2 mb-3">
                     <div class="col-6">
-                        <label class="form-label small text-secondary">Hours</label>
+                        <label class="form-label small text-secondary">Duration — Hours</label>
                         <select class="form-select" id="examHours">
                             <option value="0">0</option>
                             <option value="1">1</option>
@@ -348,13 +354,25 @@
                         </select>
                     </div>
                     <div class="col-6">
-                        <label class="form-label small text-secondary">Minutes</label>
+                        <label class="form-label small text-secondary">Duration — Minutes</label>
                         <select class="form-select" id="examMinutes">
                             <option value="0">00</option>
                             <option value="15">15</option>
                             <option value="30">30</option>
                             <option value="45">45</option>
                         </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small text-secondary d-flex align-items-center gap-2">
+                        <i class="bi bi-clock" style="color: var(--primary-light)"></i>
+                        Default Exam Start Time
+                        <span class="badge" style="background: rgba(108,99,255,0.15); color: var(--primary-light); font-weight:normal; font-size:.7rem;">optional</span>
+                    </label>
+                    <input type="time" class="form-control" id="examDefaultStartTime" step="300">
+                    <div class="form-text text-secondary" style="font-size:.78rem;">
+                        Sets the default start time shown in the timetable grid and duty results for this exam type.
+                        Individual dates can override this in the timetable builder.
                     </div>
                 </div>
                 <button type="button" class="btn btn-primary-custom w-100" onclick="saveExam()">Save</button>
@@ -969,34 +987,49 @@ function openExamModal() {
     document.getElementById('examProgramType').value = '';
     document.getElementById('examHours').value = '0';
     document.getElementById('examMinutes').value = '0';
+    document.getElementById('examDefaultStartTime').value = '';
     document.getElementById('examModalTitle').innerText = 'Add exam type';
     new bootstrap.Modal(document.getElementById('examModal')).show();
 }
+
 function editExam(id) {
-    fetch(`{% url 'college_settings:exam_type_edit' 0 %}`.replace('/0/', `/${id}/`)).then(r => r.json()).then(data => {
-        document.getElementById('examId').value = id;
-        document.getElementById('examName').value = data.name;
-        document.getElementById('examProgramType').value = data.exam_program_type || '';
-        document.getElementById('examHours').value = String(data.duration_hours || 0);
-        document.getElementById('examMinutes').value = String(data.duration_minutes || 0);
-        document.getElementById('examModalTitle').innerText = 'Edit exam type';
-        new bootstrap.Modal(document.getElementById('examModal')).show();
-    });
+    fetch(`{% url 'college_settings:exam_type_edit' 0 %}`.replace('/0/', `/${id}/`))
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('examId').value = id;
+            document.getElementById('examName').value = data.name;
+            document.getElementById('examProgramType').value = data.exam_program_type || '';
+            document.getElementById('examHours').value = String(data.duration_hours || 0);
+            document.getElementById('examMinutes').value = String(data.duration_minutes || 0);
+            document.getElementById('examDefaultStartTime').value = data.default_start_time || '';
+            document.getElementById('examModalTitle').innerText = 'Edit exam type';
+            new bootstrap.Modal(document.getElementById('examModal')).show();
+        });
 }
+
 function saveExam() {
     const id = document.getElementById('examId').value;
     const payload = {
         name: document.getElementById('examName').value,
         exam_program_type: document.getElementById('examProgramType').value,
         duration_hours: document.getElementById('examHours').value,
-        duration_minutes: document.getElementById('examMinutes').value
+        duration_minutes: document.getElementById('examMinutes').value,
+        default_start_time: document.getElementById('examDefaultStartTime').value,
     };
-    const url = id ? `{% url 'college_settings:exam_type_edit' 0 %}`.replace('/0/', `/${id}/`) : '{% url "college_settings:exam_type_add" %}';
+    const url = id
+        ? `{% url 'college_settings:exam_type_edit' 0 %}`.replace('/0/', `/${id}/`)
+        : '{% url "college_settings:exam_type_add" %}';
     postForm(url, payload).then(d => {
-        if (d.success) { bootstrap.Modal.getInstance(document.getElementById('examModal'))?.hide(); loadFrag('{% url "college_settings:frag_exam_types" %}', 'exam-tbody'); toast(true, d.message); }
-        else alert(d.message);
+        if (d.success) {
+            bootstrap.Modal.getInstance(document.getElementById('examModal'))?.hide();
+            loadFrag('{% url "college_settings:frag_exam_types" %}', 'exam-tbody');
+            toast(true, d.message);
+        } else {
+            alert(d.message);
+        }
     });
 }
+
 function delExam(id, name) {
     if (!confirm('Delete exam type "' + name + '"?')) return;
     postForm(`{% url 'college_settings:exam_type_delete' 0 %}`.replace('/0/delete/', `/${id}/delete/`), {}).then(d => {

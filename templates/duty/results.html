@@ -1,6 +1,340 @@
 {% extends 'base_dashboard.html' %}
+{% block extra_css %}
+<style>
+/* Force table visibility with aggressive overrides */
+#resultsTable,
+#resultsTable th,
+#resultsTable td,
+#resultsTable tr,
+#resultsTable tbody,
+#resultsTable thead,
+.table,
+.table th,
+.table td,
+.table tr,
+.table tbody,
+.table thead {
+    color: #FFFFFF !important;
+    background-color: transparent !important;
+}
+
+/* Additional overrides for all table elements in the page */
+div[class*="table"],
+table[class*="table"],
+th[class*="table"],
+td[class*="table"],
+tr[class*="table"],
+tbody[class*="table"],
+thead[class*="table"] {
+    color: #FFFFFF !important;
+    background-color: transparent !important;
+}
+
+/* Override any inline styles */
+[style*="color"] {
+    color: #FFFFFF !important;
+}
+
+/* Force all text elements in tables */
+#resultsTable *,
+.table *,
+.table-responsive * {
+    color: #FFFFFF !important;
+}
+
+/* Specific overrides for problematic elements */
+.text-dark,
+.text-secondary,
+.text-muted,
+.text-primary,
+.text-info,
+.text-warning,
+.text-danger,
+.text-success {
+    color: #FFFFFF !important;
+}
+
+/* Override Bootstrap table classes */
+.table-bordered,
+.table-striped,
+.table-hover,
+.table-condensed,
+.table-sm {
+    color: #FFFFFF !important;
+}
+
+.table-bordered th,
+.table-bordered td,
+.table-striped th,
+.table-striped td,
+.table-hover th,
+.table-hover td,
+.table-condensed th,
+.table-condensed td,
+.table-sm th,
+.table-sm td {
+    color: #FFFFFF !important;
+}
+
+#resultsTable th {
+    background-color: var(--bg-elevated) !important;
+    color: #FFFFFF !important;
+    border-color: var(--border-subtle) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    font-size: 0.8rem !important;
+    letter-spacing: 0.05em !important;
+}
+
+#resultsTable td {
+    color: #FFFFFF !important;
+    border-color: var(--border-subtle) !important;
+    padding: 0.75rem !important;
+    vertical-align: middle !important;
+}
+
+#resultsTable .text-dark,
+#resultsTable .text-secondary,
+#resultsTable .text-muted {
+    color: #FFFFFF !important;
+}
+
+#resultsTable .badge {
+    color: #FFFFFF !important;
+    font-weight: 500 !important;
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.75rem !important;
+}
+
+#resultsTable .badge.bg-primary {
+    background-color: var(--primary) !important;
+    color: #FFFFFF !important;
+}
+
+#resultsTable .badge.bg-warning {
+    background-color: var(--warning) !important;
+    color: #000000 !important;
+}
+
+#resultsTable .fw-bold {
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+}
+
+#resultsTable .bi,
+#resultsTable .fas,
+#resultsTable .fa {
+    color: #FFFFFF !important;
+    font-size: 0.9rem !important;
+}
+
+#resultsTable .btn {
+    color: #FFFFFF !important;
+    border-color: var(--warning) !important;
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 6px !important;
+}
+
+#resultsTable .btn-outline-warning {
+    color: var(--warning) !important;
+    border-color: var(--warning) !important;
+}
+
+#resultsTable .btn-outline-warning:hover {
+    background-color: var(--warning) !important;
+    color: #000000 !important;
+}
+
+#resultsTable .btn-outline-warning:hover .bi {
+    color: #000000 !important;
+}
+
+/* Reserve cards visibility */
+.card.border-0 {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    border-radius: 12px !important;
+    transition: all 0.3s ease !important;
+}
+
+.card.border-0:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(138, 120, 240, 0.15) !important;
+}
+
+.card.border-0 h6,
+.card.border-0 .fw-bold {
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+}
+
+.card.border-0 .text-muted {
+    color: var(--text-secondary) !important;
+    font-size: 0.85rem !important;
+}
+
+.card.border-0 .bi,
+.card.border-0 .fas,
+.card.border-0 .fa {
+    color: var(--primary-light) !important;
+    font-size: 1.1rem !important;
+}
+
+/* Enhanced layout improvements */
+.duty-header {
+    background: linear-gradient(135deg, var(--bg-elevated) 0%, var(--bg-surface) 100%) !important;
+    border-radius: 16px !important;
+    padding: 1.5rem !important;
+    margin-bottom: 1.5rem !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.exam-info-badges {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.75rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.exam-info-badges .badge {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.85rem !important;
+    border-radius: 20px !important;
+    font-weight: 500 !important;
+}
+
+.duty-alert {
+    border-radius: 12px !important;
+    border: 1px solid var(--border-subtle) !important;
+    padding: 1rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.duty-alert .alert-heading {
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+}
+
+.duty-alert .small {
+    color: var(--text-secondary) !important;
+}
+
+/* Responsive improvements */
+@media (max-width: 992px) {
+    .duty-header {
+        padding: 1rem !important;
+    }
+    
+    .exam-info-badges {
+        gap: 0.5rem !important;
+    }
+    
+    .exam-info-badges .badge {
+        font-size: 0.75rem !important;
+        padding: 0.4rem 0.8rem !important;
+    }
+}
+
+@media (max-width: 768px) {
+    #resultsTable {
+        font-size: 0.8rem !important;
+    }
+    
+    #resultsTable th,
+    #resultsTable td {
+        padding: 0.5rem !important;
+    }
+    
+    #resultsTable .badge {
+        font-size: 0.7rem !important;
+        padding: 0.3rem 0.6rem !important;
+    }
+    
+    #resultsTable .btn {
+        padding: 0.2rem 0.4rem !important;
+        font-size: 0.7rem !important;
+    }
+    
+    .card.border-0 {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .duty-header .btn {
+        font-size: 0.875rem !important;
+        padding: 0.5rem 1rem !important;
+    }
+}
+
+/* Print area styling */
+#printArea {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    border-radius: 8px !important;
+    padding: 2rem !important;
+    margin-top: 1rem !important;
+}
+
+#printArea .table {
+    color: #000000 !important;
+}
+
+#printArea .table th {
+    background: #f8f9fa !important;
+    color: #212529 !important;
+    border-color: #dee2e6 !important;
+}
+
+#printArea .table td {
+    color: #212529 !important;
+    border-color: #dee2e6 !important;
+}
+
+/* Modal improvements */
+.modal-content {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: #FFFFFF !important;
+    border-radius: 16px !important;
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-subtle) !important;
+    padding: 1.5rem !important;
+}
+
+.modal-body {
+    padding: 1.5rem !important;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-subtle) !important;
+    padding: 1.5rem !important;
+}
+
+.modal .btn-close {
+    filter: invert(1) !important;
+}
+
+.modal .form-label {
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+}
+
+.modal .form-select {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: #FFFFFF !important;
+}
+
+.modal .form-select option {
+    background-color: var(--bg-elevated) !important;
+    color: #FFFFFF !important;
+}
+</style>
+{% endblock %}
 {% block dashboard_content %}
-<div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+<div class="duty-header mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
     <div>
         <h3 class="fw-bold m-0" style="color: var(--text-primary);">Duty Assignments</h3>
         <p class="text-secondary mt-1 mb-0">{{ session.title }} ({{ session.exam_type.name }})</p>
@@ -15,15 +349,30 @@
     </div>
 </div>
 
+{# ── Exam type info badge ───────────────────────────────────────────────────── #}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <span class="badge" style="background: rgba(138,120,240,0.15); color: var(--primary-light); border: 1px solid var(--primary-light); padding: 6px 14px; font-size:.85rem;">
+        <i class="bi bi-hourglass-split me-1"></i>
+        Duration: {{ session.exam_type.duration_hours }}h {{ session.exam_type.duration_minutes }}m
+    </span>
+    {% if session.exam_type.default_start_time %}
+    <span class="badge" style="background: rgba(0,201,167,0.15); color: var(--secondary); border: 1px solid var(--secondary); padding: 6px 14px; font-size:.85rem;">
+        <i class="bi bi-clock me-1"></i>
+        Default start: {{ session.exam_type.default_start_time|time:"h:i A" }}
+    </span>
+    {% endif %}
+</div>
+
 <div class="card bg-surface border-subtle radius-card shadow-card p-4"
     style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
+
     {% if has_shortage %}
     <div class="alert alert-warning mb-3">
         <div class="fw-bold mb-1">Warning: Some rooms are unassigned due to faculty shortage.</div>
         <div class="small mb-2">
-            The following date/room pairs could not be fully staffed:
+            Unassigned pairs:
             {% for d, room_no in shortage_pairs %}
-            {{ d|date:"d M" }} (Room {{ room_no }}){% if not forloop.last %}, {% endif %}
+                {{ d|date:"d M" }} (Room {{ room_no }}){% if not forloop.last %}, {% endif %}
             {% endfor %}
         </div>
         <a href="{% url 'duty:wizard_step2' %}?session_id={{ session.id }}" class="btn btn-sm btn-outline-dark">Go Back</a>
@@ -32,56 +381,118 @@
     <div class="alert alert-success mb-3">All selected dates and rooms are fully assigned.</div>
     {% endif %}
 
+    <!-- Reserves Section -->
+    {% if reserves %}
+    <div class="mb-4">
+        <h5 class="fw-bold mb-3" style="color: var(--text-primary);">
+            <i class="bi bi-people-fill me-2"></i>Reserve Faculty Members
+        </h5>
+        <div class="row">
+            {% for reserve in reserves %}
+            <div class="col-md-6 col-lg-4 mb-2">
+                <div class="card border-0" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle) !important;">
+                    <div class="card-body py-2">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-person-badge me-2" style="color: var(--primary-light);"></i>
+                            <div>
+                                <h6 class="mb-0 fw-bold" style="color: var(--text-primary);">{{ reserve.faculty.name }}</h6>
+                                <small class="text-muted">{{ reserve.faculty.designation }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <div id="printArea" class="bg-white p-4 rounded" style="color: #000;">
         <div class="text-center mb-4 d-none d-print-block" id="printHeader">
             <h2 class="fw-bold fs-4 mb-1">AloCentra College of Engineering</h2>
             <h3 class="fw-bold fs-5 mb-2">Exam Duty Allotment</h3>
             <p class="mb-1"><strong>Session:</strong> {{ session.title }}</p>
+            <p class="mb-1"><strong>Exam Type:</strong> {{ session.exam_type.name }}</p>
             <p class="mb-1"><strong>Duration:</strong> {{ session.exam_type.duration_hours }}h {{ session.exam_type.duration_minutes }}m</p>
+            {% if session.exam_type.default_start_time %}
+            <p class="mb-1"><strong>Default Start Time:</strong> {{ session.exam_type.default_start_time|time:"h:i A" }}</p>
+            {% endif %}
         </div>
 
         <div class="table-responsive">
-            <table class="table table-bordered table-sm" id="resultsTable" style="border-color: #101111;">
-                <thead style="background: #141313; color: #212529 !important;">
+            <table class="table table-bordered table-sm table-dark" id="resultsTable" style="border-color: var(--border-subtle);">
+                <thead style="background: var(--bg-elevated); color: var(--text-primary);">
                     <tr class="text-uppercase small fw-bold">
                         <th>Date</th>
+                        <th>Exam Time</th>
                         <th>Room</th>
                         <th>Invigilator</th>
                         <th>Reliever(s)</th>
                         <th>Designation</th>
                     </tr>
                 </thead>
-                <tbody style="color: #212529 !important;">
+                <tbody style="color: var(--text-primary);">
                     {% for row in grouped_results %}
                     <tr>
-                        <td class="fw-bold text-dark">{{ row.date|date:"d M Y" }}</td>
-                        <td class="fw-bold text-dark">{{ row.room_no }}</td>
+                        <td class="fw-bold" style="color: var(--text-primary);">{{ row.date|date:"d M Y" }}</td>
+                        <td>
+                            {% if row.exam_time %}
+                                <span class="badge" style="background: rgba(40,167,69,0.15); color: var(--success); border:1px solid var(--success); font-size:.8rem;">
+                                    <i class="bi bi-clock" style="color: var(--success);"></i> {{ row.exam_time }}
+                                    {% if row.exam_time_is_override %}
+                                    <span style="font-size:.65rem; opacity:.7">(custom)</span>
+                                    {% endif %}
+                                </span>
+                            {% else %}
+                                <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold" style="color: var(--text-primary);">{{ row.room_no }}</td>
                         <td>
                             {% if row.invigilator %}
-                                <span class="badge bg-primary">Invigilator</span>
-                                <span class="ms-2 fw-bold text-dark">{{ row.invigilator }}</span>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <span class="badge bg-primary">Invigilator</span>
+                                        <span class="ms-2 fw-bold" style="color: var(--text-primary);">{{ row.invigilator }}</span>
+                                    </div>
+                                    {% if reserves and permissions.can_assign_duty %}
+                                    <button class="btn btn-sm btn-outline-warning ms-2" 
+                                            onclick="showReplaceModal('{{ row.invigilator_id }}', '{{ row.invigilator|escapejs }}', 'invigilator')"
+                                            title="Replace with reserve">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
                             {% else %}
-                                <span class="text-dark">--</span>
+                                <span style="color: var(--text-secondary);">--</span>
                             {% endif %}
                         </td>
                         <td>
                             {% if row.relievers %}
-                                {% for name in row.relievers %}
+                                {% for reliever in row.relievers %}
+                                <div class="d-flex align-items-center justify-content-between">
                                     <div>
-                                        <span class="badge bg-warning text-dark">Reliever</span>
-                                        <span class="ms-2 fw-bold text-dark">{{ name }}</span>
+                                        <span class="badge bg-warning" style="color: var(--text-primary);">Reliever</span>
+                                        <span class="ms-2 fw-bold" style="color: var(--text-primary);">{{ reliever.name }}</span>
                                     </div>
+                                    {% if reserves and permissions.can_assign_duty %}
+                                    <button class="btn btn-sm btn-outline-warning ms-2" 
+                                            onclick="showReplaceModal('{{ reliever.id }}', '{{ reliever.name|escapejs }}', 'reliever')"
+                                            title="Replace with reserve">
+                                        <i class="bi bi-arrow-repeat"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
                                 {% endfor %}
                             {% else %}
-                                <span class="text-dark">--</span>
+                                <span style="color: var(--text-secondary);">--</span>
                             {% endif %}
                         </td>
-                        <td class="text-dark">{{ row.designation }}</td>
+                        <td style="color: var(--text-primary);">{{ row.designation }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-4 text-dark">No assignments could be generated. Check faculty
-                            capacity.</td>
+                        <td colspan="6" class="text-center py-4" style="color: var(--text-secondary);">No assignments generated yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -90,9 +501,88 @@
     </div>
 </div>
 
+<!-- Replace Faculty Modal -->
+<div class="modal fade" id="replaceModal" tabindex="-1" aria-labelledby="replaceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="replaceModalLabel">Replace Faculty Member</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Replace <strong id="currentFacultyName"></strong> (<span id="currentRole"></span>) with:</p>
+                <div class="mb-3">
+                    <label for="reserveSelect" class="form-label">Select Reserve Faculty:</label>
+                    <select class="form-select" id="reserveSelect" required>
+                        <option value="">Choose a reserve faculty member...</option>
+                        {% for reserve in reserves %}
+                        <option value="{{ reserve.faculty.id }}">{{ reserve.faculty.name }} - {{ reserve.faculty.designation }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="performReplace()">
+                    <i class="bi bi-arrow-repeat me-2"></i>Replace
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
+    let currentAssignmentId = null;
+    let currentFacultyName = '';
+    let currentRole = '';
+
+    function showReplaceModal(assignmentId, facultyName, role) {
+        currentAssignmentId = assignmentId;
+        currentFacultyName = facultyName;
+        currentRole = role;
+        
+        document.getElementById('currentFacultyName').textContent = facultyName;
+        document.getElementById('currentRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        document.getElementById('reserveSelect').value = '';
+        
+        const modal = new bootstrap.Modal(document.getElementById('replaceModal'));
+        modal.show();
+    }
+
+    function performReplace() {
+        const reserveFacultyId = document.getElementById('reserveSelect').value;
+        
+        if (!reserveFacultyId) {
+            alert('Please select a reserve faculty member.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('assignment_id', currentAssignmentId);
+        formData.append('reserve_faculty_id', reserveFacultyId);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch('{% url "duty:replace_faculty" %}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while replacing faculty.');
+        });
+    }
+
     function exportExcel() {
         const table = document.getElementById("resultsTable");
         const wb = XLSX.utils.table_to_book(table, { sheet: "Duty Assignments" });
@@ -102,15 +592,13 @@
     function exportPDF() {
         const element = document.getElementById('printArea');
         document.getElementById('printHeader').classList.remove('d-none');
-
         const opt = {
             margin: 0.5,
             filename: 'Duty_Assignments_{{ session.id }}.pdf',
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2 },
-            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
         };
-
         html2pdf().set(opt).from(element).save().then(() => {
             document.getElementById('printHeader').classList.add('d-none');
         });

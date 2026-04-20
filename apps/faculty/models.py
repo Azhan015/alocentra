@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
+import re
 
 class Faculty(models.Model):
     name = models.CharField(max_length=150)
@@ -15,3 +17,13 @@ class Faculty(models.Model):
 
     def __str__(self):
         return self.name
+    
+    def clean(self):
+        if self.email:
+            # Validate email ends with @sfscollege.in
+            if not self.email.lower().endswith('@sfscollege.in'):
+                raise ValidationError({'email': 'Email must be a valid sfscollege.in address'})
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

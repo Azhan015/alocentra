@@ -1,16 +1,21 @@
 :root {
     --primary: #8A78F0;
     --primary-dark: #6C5AE0;
-    --primary-light: #A596F5;
+    --primary-light: #B8A9FF;
     --secondary: #00C9A7;
     --secondary-dark: #00A388;
     --accent: #FF3366;
+    --success: #28A745;
+    --warning: #FFC107;
+    --danger: #DC3545;
+    --info: #17A2B8;
     --bg-base: #0B0A11;
     --bg-surface: #151322;
     --bg-elevated: #1E1B31;
-    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-subtle: rgba(255, 255, 255, 0.15);
     --text-primary: #FFFFFF;
-    --text-secondary: #A09DB0;
+    --text-secondary: #D1D5FF;
+    --text-muted: #9CA3FF;
     --text-inverse: #1F1B38;
     --gradient-hero: linear-gradient(135deg, #8A78F0 0%, #00C9A7 100%);
     --gradient-card: linear-gradient(145deg, #151322 0%, #1E1B31 100%);
@@ -102,7 +107,7 @@ button,
 
 .table-hover>tbody>tr:hover>* {
     --bs-table-bg-state: transparent !important;
-    background-color: rgba(108, 99, 255, 0.1) !important;
+    background-color: rgba(108, 99, 255, 0.15) !important;
     color: var(--primary-light) !important;
 }
 
@@ -110,4 +115,455 @@ button,
 .table-borderless>tbody>tr>th,
 .table-borderless>thead>tr>th {
     border: none;
+}
+
+/* Improved contrast for badges and alerts */
+.badge {
+    font-weight: 600;
+}
+
+.alert {
+    border: 1px solid var(--border-subtle);
+    font-weight: 500;
+}
+
+/* Better contrast for form elements */
+.form-control::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+.text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+/* Better contrast for links */
+a:not(.btn):not(.nav-link) {
+    color: var(--primary-light);
+    text-decoration: none;
+}
+
+a:not(.btn):not(.nav-link):hover {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+/* Improved modal contrast */
+.modal-content {
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* Better contrast for dropdowns */
+.dropdown-menu {
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-card);
+}
+
+.dropdown-item {
+    color: var(--text-primary);
+}
+
+.dropdown-item:hover {
+    background-color: rgba(108, 99, 255, 0.1);
+    color: var(--primary-light);
+}
+
+/* Enhanced visibility for all text and icons */
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* Better icon visibility */
+.bi,
+.fas,
+.fa,
+.fa-solid,
+.fa-regular,
+.fa-brands {
+    color: var(--text-secondary) !important;
+}
+
+.btn .bi,
+.btn .fas,
+.btn .fa,
+.btn .fa-solid,
+.btn .fa-regular,
+.btn .fa-brands {
+    color: inherit !important;
+}
+
+/* Enhanced button visibility */
+.btn {
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0.01em;
+}
+
+.btn-link {
+    color: var(--primary-light) !important;
+    font-weight: 500;
+}
+
+.btn-link:hover {
+    color: var(--primary) !important;
+    text-decoration: underline;
+}
+
+.btn-outline-custom {
+    font-weight: 500;
+    color: var(--primary-light) !important;
+}
+
+.btn-outline-custom:hover {
+    color: var(--primary) !important;
+}
+
+/* Enhanced form control visibility */
+.form-control,
+.form-select {
+    font-weight: 400;
+    font-size: 0.95rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    color: var(--text-primary) !important;
+    font-weight: 400;
+}
+
+.form-control::placeholder,
+.form-select::placeholder {
+    color: var(--text-muted) !important;
+    opacity: 0.9;
+}
+
+/* Enhanced table visibility */
+.table {
+    color: var(--text-primary) !important;
+}
+
+.table th {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+    border-color: var(--border-subtle) !important;
+}
+
+.table td {
+    color: var(--text-primary) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.table .text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+.table .text-muted {
+    color: var(--text-muted) !important;
+}
+
+.table .bi,
+.table .fas,
+.table .fa {
+    color: var(--text-secondary) !important;
+}
+
+/* Enhanced card visibility */
+.card {
+    background-color: var(--bg-surface) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+}
+
+.card-header {
+    background-color: var(--bg-elevated) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+}
+
+.card-body {
+    color: var(--text-primary) !important;
+}
+
+.card .text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+.card .text-muted {
+    color: var(--text-muted) !important;
+}
+
+.card .bi,
+.card .fas,
+.card .fa {
+    color: var(--text-secondary) !important;
+}
+
+/* Enhanced modal visibility */
+.modal-content {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+}
+
+.modal-header {
+    color: var(--text-primary) !important;
+}
+
+.modal-body {
+    color: var(--text-primary) !important;
+}
+
+.modal-footer {
+    color: var(--text-primary) !important;
+}
+
+.modal .text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+.modal .text-muted {
+    color: var(--text-muted) !important;
+}
+
+.modal .bi,
+.modal .fas,
+.modal .fa {
+    color: var(--text-secondary) !important;
+}
+
+/* Enhanced dropdown visibility */
+.dropdown-menu {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    box-shadow: var(--shadow-card) !important;
+}
+
+.dropdown-item {
+    color: var(--text-primary) !important;
+    font-weight: 400;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(108, 99, 255, 0.1) !important;
+    color: var(--primary-light) !important;
+}
+
+.dropdown-item .bi,
+.dropdown-item .fas,
+.dropdown-item .fa {
+    color: var(--text-secondary) !important;
+}
+
+/* Enhanced alert visibility */
+.alert {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+}
+
+.alert .bi,
+.alert .fas,
+.alert .fa {
+    color: var(--text-secondary) !important;
+}
+
+/* Enhanced badge visibility */
+.badge {
+    font-weight: 600;
+    color: var(--text-primary) !important;
+}
+
+.badge .bi,
+.badge .fas,
+.badge .fa {
+    color: inherit !important;
+}
+
+/* Enhanced navigation visibility */
+.navbar {
+    background-color: var(--bg-surface) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.navbar-brand {
+    color: var(--text-primary) !important;
+    font-weight: 600;
+}
+
+.nav-link {
+    color: var(--text-secondary) !important;
+    font-weight: 500;
+}
+
+.nav-link:hover {
+    color: var(--primary-light) !important;
+}
+
+.navbar .bi,
+.navbar .fas,
+.navbar .fa {
+    color: var(--text-secondary) !important;
+}
+
+/* Enhanced sidebar visibility */
+.sidebar {
+    background-color: var(--bg-surface) !important;
+    border-right: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+}
+
+.sidebar .nav-link {
+    color: var(--text-secondary) !important;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    color: var(--primary-light) !important;
+    background-color: rgba(108, 99, 255, 0.1) !important;
+}
+
+.sidebar .bi,
+.sidebar .fas,
+.sidebar .fa {
+    color: var(--text-secondary) !important;
+}
+
+/* Enhanced form validation visibility */
+.form-control.is-valid {
+    border-color: var(--success) !important;
+    background-color: rgba(40, 167, 69, 0.1) !important;
+}
+
+.form-control.is-invalid {
+    border-color: var(--danger) !important;
+    background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+.valid-feedback {
+    color: var(--success) !important;
+    font-weight: 500;
+}
+
+.invalid-feedback {
+    color: var(--danger) !important;
+    font-weight: 500;
+}
+
+/* Enhanced pagination visibility */
+.page-link {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+}
+
+.page-link:hover {
+    background-color: rgba(108, 99, 255, 0.1) !important;
+    color: var(--primary-light) !important;
+}
+
+.page-item.active .page-link {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: white !important;
+}
+
+/* Enhanced tooltip visibility */
+.tooltip {
+    --bs-tooltip-bg: var(--bg-elevated) !important;
+    --bs-tooltip-color: var(--text-primary) !important;
+    --bs-tooltip-border-color: var(--border-subtle) !important;
+}
+
+/* Enhanced progress bar visibility */
+.progress {
+    background-color: var(--bg-surface) !important;
+}
+
+.progress-bar {
+    background-color: var(--primary) !important;
+}
+
+/* Enhanced list group visibility */
+.list-group-item {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+}
+
+.list-group-item:hover {
+    background-color: rgba(108, 99, 255, 0.05) !important;
+}
+
+.list-group-item .bi,
+.list-group-item .fas,
+.list-group-item .fa {
+    color: var(--text-secondary) !important;
+}
+
+/* Enhanced accordion visibility */
+.accordion-button {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: rgba(108, 99, 255, 0.1) !important;
+    color: var(--primary-light) !important;
+}
+
+.accordion-button:focus {
+    box-shadow: 0 0 0 0.25rem rgba(108, 99, 255, 0.25) !important;
+}
+
+.accordion-button .bi,
+.accordion-button .fas,
+.accordion-button .fa {
+    color: var(--text-secondary) !important;
+}
+
+.accordion-body {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Enhanced breadcrumb visibility */
+.breadcrumb {
+    background-color: var(--bg-elevated) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.breadcrumb-item {
+    color: var(--text-secondary) !important;
+}
+
+.breadcrumb-item.active {
+    color: var(--text-primary) !important;
+}
+
+.breadcrumb-item a {
+    color: var(--primary-light) !important;
+}
+
+.breadcrumb-item a:hover {
+    color: var(--primary) !important;
+}
+
+/* Enhanced spinner visibility */
+.spinner-border {
+    border-color: var(--primary-light) !important;
+    border-right-color: transparent !important;
+}
+
+.spinner-grow {
+    background-color: var(--primary-light) !important;
 }

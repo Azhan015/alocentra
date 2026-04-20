@@ -54,7 +54,7 @@ class Section(models.Model):
 
 
 class Course(models.Model):
-    """Academic course unit (subject) mapped to a program/semester, optionally scoped to a specialisation."""
+    """Academic course unit (subject) mapped to a program/semester."""
 
     COURSE_TYPE_CHOICES = [
         ('core', 'Core'),
@@ -100,3 +100,24 @@ class TimetableCell(models.Model):
 
     class Meta:
         unique_together = [['timetable', 'program', 'semester', 'date']]
+
+
+class TimetableDateConfig(models.Model):
+    """
+    Optional per-date exam time and duration override for a timetable.
+    If no row exists for a given date, the ExamType defaults are used.
+    """
+    timetable = models.ForeignKey(
+        ExamTimetable, on_delete=models.CASCADE, related_name='date_configs'
+    )
+    date = models.DateField()
+    # None = use ExamType default; a value = override for this date
+    exam_time = models.TimeField(null=True, blank=True)
+    duration_hours = models.PositiveSmallIntegerField(null=True, blank=True)
+    duration_minutes = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [['timetable', 'date']]
+
+    def __str__(self):
+        return f'{self.timetable} | {self.date} @ {self.exam_time or "default"} ({self.duration_hours or 0}h {self.duration_minutes or 0}m)'

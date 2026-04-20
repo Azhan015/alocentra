@@ -1,14 +1,27 @@
+# ── Core ──────────────────────────────────────────────────────────────────────
 Django==4.2.9
 psycopg2-binary==2.9.9
+python-decouple==3.8
+dj-database-url==2.1.0
+whitenoise==6.6.0
+
+# ── Async / Task queue ────────────────────────────────────────────────────────
 celery==5.3.6
 django-celery-beat==2.5.0
 redis==5.0.1
+
+# ── WSGI server (production) ──────────────────────────────────────────────────
 gunicorn==21.2.0
-whitenoise==6.6.0
+
+# ── File exports ──────────────────────────────────────────────────────────────
 openpyxl==3.1.2
 reportlab==4.2.2
 Pillow==10.2.0
-python-decouple==3.8
-dj-database-url==2.1.0
+
+# ── Security ──────────────────────────────────────────────────────────────────
 django-axes==6.3.0
-reportlab
+
+# ── Development / Debugging (safe to include; only activated in dev settings) ─
+django-debug-toolbar==4.2.0
+black==23.12.1
+flake8==7.0.0
