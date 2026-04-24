@@ -58,6 +58,22 @@ def add_faculty(request):
         if email and not email.lower().endswith('@sfscollege.in'):
             return JsonResponse({'success': False, 'message': 'Email must be a valid sfscollege.in address'})
         
+        # Check for duplicate faculty (name + department)
+        duplicate_query = Faculty.objects.filter(name__iexact=name, is_active=True)
+        if department:
+            duplicate_query = duplicate_query.filter(department__iexact=department)
+        elif email:
+            # If no department, check by email if provided
+            duplicate_query = Faculty.objects.filter(email__iexact=email, is_active=True)
+        
+        if duplicate_query.exists():
+            if department:
+                return JsonResponse({'success': False, 'message': f'Faculty "{name}" already exists in department "{department}"'})
+            elif email:
+                return JsonResponse({'success': False, 'message': f'Faculty with email "{email}" already exists'})
+            else:
+                return JsonResponse({'success': False, 'message': f'Faculty "{name}" already exists'})
+        
         Faculty.objects.create(name=name, designation=designation, email=email, department=department, created_by=request.user)
         return JsonResponse({'success': True, 'message': 'Faculty added successfully'})
     except Exception as e:

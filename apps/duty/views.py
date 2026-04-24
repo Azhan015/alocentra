@@ -7,7 +7,7 @@ from apps.accounts.utils import permission_required_custom, get_user_permissions
 from apps.rooms.models import Room
 from apps.faculty.models import Faculty
 from apps.timetable.models import ExamTimetable
-from .models import ExamType, DutySession, DutySessionRoom, FacultyDutyAssignment, DutyAssignment, DutyReserve
+from .models import ExamType, DutySession, DutySessionRoom, FacultyDutyAssignment, DutyAssignment
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,6 @@ def duty_wizard_step2(request):
 
     session = get_object_or_404(DutySession, id=session_id)
     faculties = Faculty.objects.filter(is_active=True).order_by('name')
-    room_count = session.session_rooms.count()
 
     if request.method == 'POST':
         selected_faculties = request.POST.getlist('faculty')
@@ -133,8 +132,6 @@ def duty_wizard_step2(request):
         'faculties': faculties,
         'assignments': assignments,
         'permissions': get_user_permissions(request.user),
-        'room_count': room_count,
-        'invigilators_needed': room_count,
     }
     return render(request, 'duty/wizard_step2.html', context)
 
@@ -149,9 +146,6 @@ def duty_wizard_step3(request):
     session = get_object_or_404(DutySession, id=session_id)
     assigned_ids = session.faculty_assignments.filter(is_reliever=False).values_list('faculty_id', flat=True)
     faculties = Faculty.objects.filter(is_active=True).exclude(id__in=assigned_ids).order_by('name')
-    room_count = session.session_rooms.count()
-    import math
-    relievers_needed = math.ceil(room_count / 4) if room_count > 0 else 0
 
     if request.method == 'POST':
         selected_relievers = request.POST.getlist('relievers')
@@ -166,7 +160,12 @@ def duty_wizard_step3(request):
                 session=session, faculty_id=f_id, is_reliever=True, reliever_room_count=room_count
             )
 
-        return redirect('duty:wizard_step4')
+        session.status = 'FINALIZED'
+        session.save()
+        del request.session['current_duty_session_id']
+        if 'current_timetable_id' in request.session:
+            del request.session['current_timetable_id']
+        return redirect('duty:results', session_id=session.id)
 
     reliever_assignments = {
         a.faculty_id: a.reliever_room_count
@@ -177,65 +176,8 @@ def duty_wizard_step3(request):
         'faculties': faculties,
         'reliever_assignments': reliever_assignments,
         'permissions': get_user_permissions(request.user),
-        'room_count': room_count,
-        'relievers_needed': relievers_needed,
     }
     return render(request, 'duty/wizard_step3.html', context)
-
-
-@login_required
-@permission_required_custom('can_assign_duty')
-def duty_wizard_step4(request):
-    """Reserves selection step - select exactly 2 faculty members as reserves"""
-    session_id = request.session.get('current_duty_session_id')
-    if not session_id:
-        return redirect('duty:wizard_start')
-
-    session = get_object_or_404(DutySession, id=session_id)
-    
-    # Get faculty already assigned as invigilators or relievers
-    assigned_faculty_ids = session.faculty_assignments.values_list('faculty_id', flat=True)
-    
-    # Get available faculty (not already assigned)
-    available_faculties = Faculty.objects.filter(is_active=True).exclude(id__in=assigned_faculty_ids).order_by('name')
-    
-    # Get current reserves
-    current_reserves = list(session.reserves.values_list('faculty_id', flat=True))
-
-    if request.method == 'POST':
-        selected_reserves = request.POST.getlist('reserves')
-        
-        # Validate exactly 2 reserves selected
-        if len(selected_reserves) != 2:
-            context = {
-                'session': session,
-                'faculties': available_faculties,
-                'current_reserves': current_reserves,
-                'permissions': get_user_permissions(request.user),
-                'error': 'Please select exactly 2 faculty members as reserves.'
-            }
-            return render(request, 'duty/wizard_step4.html', context)
-        
-        # Update reserves
-        DutyReserve.objects.filter(session=session).delete()
-        for f_id in selected_reserves:
-            DutyReserve.objects.create(session=session, faculty_id=f_id)
-        
-        # Finalize the session
-        session.status = 'FINALIZED'
-        session.save()
-        del request.session['current_duty_session_id']
-        if 'current_timetable_id' in request.session:
-            del request.session['current_timetable_id']
-        return redirect('duty:results', session_id=session.id)
-
-    context = {
-        'session': session,
-        'faculties': available_faculties,
-        'current_reserves': current_reserves,
-        'permissions': get_user_permissions(request.user),
-    }
-    return render(request, 'duty/wizard_step4.html', context)
 
 
 @login_required
@@ -247,53 +189,31 @@ def duty_results(request, session_id):
         generate_assignments,
         get_timetable_exam_dates_for_session,
     )
-    from apps.timetable.models import TimetableDateConfig
- 
+
     exam_dates = get_timetable_exam_dates_for_session(session)
     rooms = list(session.session_rooms.select_related('room').all())
     rooms_sorted = sorted((sr.room for sr in rooms), key=lambda r: r.room_no)
- 
-    results_qs = DutyAssignment.objects.filter(
-        session=session, date__in=exam_dates
-    ).select_related('faculty', 'room').order_by('date', 'room__room_no')
- 
+
+    results_qs = DutyAssignment.objects.filter(session=session, date__in=exam_dates).select_related('faculty', 'room')
+    results_qs = results_qs.order_by('date', 'room__room_no')
+
     shortage = {'invigilator': [], 'reliever': []}
- 
+
     if exam_dates and not results_qs.exists() and session.status == 'FINALIZED':
         try:
             shortage = generate_assignments(session) or {'invigilator': [], 'reliever': []}
         except Exception:
             logger.exception(
                 'Duty assignment generation failed for session id=%s title=%r',
-                session.id, session.title,
+                session.id,
+                session.title,
             )
-        results_qs = DutyAssignment.objects.filter(
-            session=session, date__in=exam_dates
-        ).select_related('faculty', 'room').order_by('date', 'room__room_no')
+        results_qs = DutyAssignment.objects.filter(session=session, date__in=exam_dates).select_related(
+            'faculty', 'room'
+        ).order_by('date', 'room__room_no')
     else:
         shortage = evaluate_shortage(session)
- 
-    # ── Build date → exam time map ─────────────────────────────────────────────
-    default_time_obj = session.exam_type.default_start_time  # may be None
-    date_time_map = {}
- 
-    if session.timetable:
-        # Load per-date overrides from TimetableDateConfig
-        for cfg in TimetableDateConfig.objects.filter(timetable=session.timetable, date__in=exam_dates):
-            date_time_map[cfg.date] = {
-                'time': cfg.exam_time.strftime('%I:%M %p') if cfg.exam_time else None,
-                'is_override': cfg.exam_time is not None,
-            }
- 
-    # Fill missing dates with default
-    for d in exam_dates:
-        if d not in date_time_map:
-            date_time_map[d] = {
-                'time': default_time_obj.strftime('%I:%M %p') if default_time_obj else None,
-                'is_override': False,
-            }
- 
-    # ── Build result rows ──────────────────────────────────────────────────────
+
     inv_map = {}
     rel_map = {}
     for a in results_qs:
@@ -301,57 +221,68 @@ def duty_results(request, session_id):
         if a.is_reliever:
             rel_map.setdefault(key, []).append(a)
         else:
+            # Engine is expected to create at most one invigilator per (date, room).
             inv_map[key] = a
- 
+
     grouped_results = []
     for d in exam_dates:
-        time_info = date_time_map.get(d, {'time': None, 'is_override': False})
         for room in rooms_sorted:
             key = (d, room.id)
-            inv  = inv_map.get(key)
-            rels = sorted(rel_map.get(key, []), key=lambda x: (x.faculty.name or '', x.id))
- 
+            inv = inv_map.get(key)
+            rels = rel_map.get(key, [])
+            # Stable ordering for export/readability.
+            rels_sorted = sorted(rels, key=lambda x: (x.faculty.name or '', x.id))
             if inv:
                 designation = getattr(inv.faculty, 'designation', '') or '--'
-            elif rels:
-                designation = getattr(rels[0].faculty, 'designation', '') or '--'
+            elif rels_sorted:
+                designation = getattr(rels_sorted[0].faculty, 'designation', '') or '--'
             else:
                 designation = '--'
- 
-            grouped_results.append({
-                'date':              d,
-                'exam_time':         time_info['time'],
-                'exam_time_is_override': time_info['is_override'],
-                'room_no':           room.room_no,
-                'invigilator':       inv.faculty.name if inv else None,
-                'invigilator_id':    inv.id if inv else None,
-                'relievers':         [{'name': r.faculty.name, 'id': r.id} for r in rels],
-                'designation':       designation,
-            })
- 
+
+            grouped_results.append(
+                {
+                    'date': d,
+                    'room_no': room.room_no,
+                    'invigilator': inv.faculty.name if inv else None,
+                    'relievers': [r.faculty.name for r in rels_sorted],
+                    'designation': designation,
+                }
+            )
+
     combined = []
     seen = set()
     for kind in ('invigilator', 'reliever'):
         for d, room_no in shortage.get(kind, []):
             key = (d, room_no)
-            if key not in seen:
-                seen.add(key)
-                combined.append((d, room_no))
+            if key in seen:
+                continue
+            seen.add(key)
+            combined.append((d, room_no))
     combined.sort(key=lambda x: (x[0], x[1]))
- 
-    # Get reserves for this session
-    reserves = list(session.reserves.select_related('faculty').all())
+
+    # Calculate capacity summary
+    total_slots = len(exam_dates) * len(rooms_sorted)
+    required_invigilators = total_slots
+    required_relievers = total_slots  # Assuming 1 reliever per slot
     
+    # Get total faculty count for average calculation
+    from apps.faculty.models import Faculty
+    total_faculty = Faculty.objects.filter(is_active=True).count()
+    avg_duties_per_faculty = round(total_slots * 2 / total_faculty, 1) if total_faculty > 0 else 0
+
     context = {
-        'session':         session,
+        'session': session,
         'grouped_results': grouped_results,
-        'reserves':        reserves,
-        'permissions':     get_user_permissions(request.user),
-        'shortage_pairs':  combined,
-        'has_shortage':    bool(combined),
+        'permissions': get_user_permissions(request.user),
+        'shortage_pairs': combined,
+        'has_shortage': bool(combined),
+        'total_slots': total_slots,
+        'required_invigilators': required_invigilators,
+        'required_relievers': required_relievers,
+        'avg_duties_per_faculty': avg_duties_per_faculty,
     }
     return render(request, 'duty/results.html', context)
- 
+
 
 def _resume_wizard_step_for_session(session):
     """
@@ -360,7 +291,6 @@ def _resume_wizard_step_for_session(session):
     has_rooms = session.session_rooms.exists()
     has_invigilators = session.faculty_assignments.filter(is_reliever=False).exists()
     has_relievers = session.faculty_assignments.filter(is_reliever=True).exists()
-    has_reserves = session.reserves.count() == 2
 
     if not has_rooms:
         return 1
@@ -368,9 +298,7 @@ def _resume_wizard_step_for_session(session):
         return 2
     if not has_relievers:
         return 3
-    if not has_reserves and session.status == 'DRAFT':
-        return 4
-    return 4
+    return 3
 
 
 @login_required
@@ -387,47 +315,7 @@ def duty_session_resume(request, session_id):
         return redirect('duty:wizard_step1')
     if step == 2:
         return redirect('duty:wizard_step2')
-    if step == 3:
-        return redirect('duty:wizard_step3')
-    return redirect('duty:wizard_step4')
-
-
-@login_required
-@permission_required_custom('can_assign_duty')
-@require_POST
-def replace_faculty(request):
-    """Replace an invigilator or reliever with a reserve faculty"""
-    try:
-        assignment_id = request.POST.get('assignment_id')
-        reserve_faculty_id = request.POST.get('reserve_faculty_id')
-        
-        assignment = get_object_or_404(DutyAssignment, id=assignment_id)
-        reserve_faculty = get_object_or_404(Faculty, id=reserve_faculty_id)
-        
-        # Verify the reserve is actually a reserve for this session
-        reserve = get_object_or_404(DutyReserve, session=assignment.session, faculty=reserve_faculty)
-        
-        # Get the original faculty
-        original_faculty = assignment.faculty
-        
-        # Update the assignment with the reserve faculty
-        assignment.faculty = reserve_faculty
-        assignment.save()
-        
-        # Update the reserve - replace with the original faculty
-        reserve.faculty = original_faculty
-        reserve.save()
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Replaced {original_faculty.name} with {reserve_faculty.name}'
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': str(e)
-        })
+    return redirect('duty:wizard_step3')
 
 
 @login_required

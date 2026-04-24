@@ -108,6 +108,25 @@ def timetable_view(request):
 
 
 @login_required
+@permission_required_custom('can_view_timetable')
+def timetable_view_detail(request, id):
+    timetable = get_object_or_404(ExamTimetable, id=id)
+    dates, row_keys, labels, course_lookup, date_time_map, default_time = _timetable_matrix(timetable)
+    
+    context = {
+        'timetable': timetable,
+        'dates': dates,
+        'row_keys': row_keys,
+        'labels': labels,
+        'course_lookup': course_lookup,
+        'date_time_map': date_time_map,
+        'default_time': default_time,
+        'permissions': get_user_permissions(request.user),
+    }
+    return render(request, 'timetable/view_detail.html', context)
+
+
+@login_required
 @permission_required_custom('can_edit_timetable')
 def timetable_builder(request, id=None):
     timetable = get_object_or_404(ExamTimetable, id=id) if id else None
@@ -118,6 +137,7 @@ def timetable_builder(request, id=None):
             exam_type_id = data.get('exam_type')
             date_from = data.get('date_from')
             date_to = data.get('date_to')
+            exams_per_day = data.get('exams_per_day', 1)
             cells = data.get('cells', [])
             # dict of { "YYYY-MM-DD": "HH:MM" or null }
             date_time_overrides = data.get('date_time_overrides', {})
@@ -129,12 +149,14 @@ def timetable_builder(request, id=None):
                     exam_type_id=exam_type_id,
                     date_from=date_from,
                     date_to=date_to,
+                    exams_per_day=exams_per_day,
                     created_by=request.user,
                 )
             else:
                 timetable.exam_type_id = exam_type_id
                 timetable.date_from = date_from
                 timetable.date_to = date_to
+                timetable.exams_per_day = exams_per_day
                 timetable.save()
 
             # Rebuild cells

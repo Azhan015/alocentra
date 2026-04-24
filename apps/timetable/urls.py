@@ -5,6 +5,7 @@ app_name = 'timetable'
 
 urlpatterns = [
     path('', views.timetable_view, name='list'),
+    path('view/<int:id>/', views.timetable_view_detail, name='view'),
     path('builder/', views.timetable_builder, name='builder'),
     path('builder/<int:id>/', views.timetable_builder, name='builder_edit'),
     path('builder/<int:id>/export/excel/', views.timetable_export_excel, name='export_excel'),

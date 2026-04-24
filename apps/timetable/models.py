@@ -84,6 +84,7 @@ class ExamTimetable(models.Model):
     exam_type = models.ForeignKey(ExamType, on_delete=models.PROTECT)
     date_from = models.DateField()
     date_to = models.DateField()
+    exams_per_day = models.IntegerField(default=1, choices=[(1, '1 exam per day'), (2, '2 exams per day')])
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

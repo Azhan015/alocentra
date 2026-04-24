@@ -15,32 +15,31 @@
 <div class="card bg-surface border-subtle radius-card shadow-card p-4"
     style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
     <div class="table-responsive">
-        <table class="table table-borderless table-hover mb-0">
-            <thead style="background: var(--bg-elevated); border-bottom: 2px solid var(--border-subtle);">
-                <tr class="text-secondary small text-uppercase" style="letter-spacing: 0.05em;">
-                    <th>Exam Type</th>
-                    <th>Date Range</th>
-                    <th>Created By</th>
-                    <th class="text-end">Actions</th>
+        <table class="table table-bordered table-hover mb-0" style="border-color: #dee2e6; font-size: 14px;">
+            <thead style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                <tr class="text-secondary small text-uppercase fw-bold" style="letter-spacing: 0.05em; color: #495057;">
+                    <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Exam Type</th>
+                    <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Date Range</th>
+                    <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Created By</th>
+                    <th style="padding: 12px; text-align: center;">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody style="color: #212529;">
                 {% for s in sessions %}
-                <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-primary);"
-                    class="align-middle">
-                    <td class="fw-bold">{{ s.exam_type.name }}</td>
-                    <td class="text-secondary">{{ s.date_from|date:"d M Y" }} - {{ s.date_to|date:"d M Y" }}</td>
-                    <td class="text-secondary">{{ s.created_by.name }}</td>
-                    <td class="text-end">
+                <tr style="border-bottom: 1px solid #dee2e6;" class="align-middle">
+                    <td style="padding: 12px; font-weight: 600; border-right: 1px solid #dee2e6;">{{ s.exam_type.name }}</td>
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;">{{ s.date_from|date:"d M Y" }} - {{ s.date_to|date:"d M Y" }}</td>
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;">{{ s.created_by.name }}</td>
+                    <td style="padding: 12px; text-align: center;">
                         {% if permissions.can_edit_timetable %}
-                        <a href="{% url 'timetable:builder_edit' s.id %}" class="btn btn-sm btn-outline-custom">Edit /
-                            View</a>
+                        <a href="{% url 'timetable:builder_edit' s.id %}" class="btn btn-sm btn-outline-primary me-1">Edit</a>
+                        <a href="{% url 'timetable:view' s.id %}" class="btn btn-sm btn-outline-secondary" target="_blank">View</a>
                         {% endif %}
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4" class="text-center text-secondary py-4">No timetables built yet.</td>
+                    <td colspan="4" class="text-center py-4" style="color: #6c757d;">No timetables built yet.</td>
                 </tr>
                 {% endfor %}
             </tbody>

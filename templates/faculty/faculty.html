@@ -56,44 +56,41 @@
     </div>
     {% else %}
     <div class="table-responsive">
-        <table class="table table-borderless table-hover" id="facultyTable">
-            <thead style="background: var(--bg-elevated); border-bottom: 2px solid var(--border-subtle);">
-                <tr class="text-secondary small text-uppercase" style="letter-spacing: 0.05em;">
-                    <th scope="col" style="width: 40px;">
+        <table class="table table-bordered table-hover" id="facultyTable" style="border-color: #dee2e6; font-size: 14px;">
+            <thead style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                <tr class="text-secondary small text-uppercase fw-bold" style="letter-spacing: 0.05em; color: #495057;">
+                    <th scope="col" style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6; width: 40px;">
                         <input class="form-check-input" type="checkbox" id="selectAll">
                     </th>
-                    <th scope="col" style="width: 60px;">#</th>
-                    <th scope="col">Name</th>
-                    <th scope="col">Email</th>
-                    <th scope="col">Designation</th>
-                    <th scope="col">Department</th>
-                    <th scope="col" class="text-end">Actions</th>
+                    <th scope="col" style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6; width: 60px;">#</th>
+                    <th scope="col" style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Name</th>
+                    <th scope="col" style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Email</th>
+                    <th scope="col" style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Designation</th>
+                    <th scope="col" style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Department</th>
+                    <th scope="col" style="padding: 12px; text-align: center;">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody style="color: #212529;">
                 {% for fac in page_obj %}
-                <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-primary);">
-                    <td><input class="form-check-input row-checkbox" type="checkbox" value="{{ fac.id }}"></td>
-                    <td>{{ forloop.counter0|add:page_obj.start_index }}</td>
-                    <td class="fw-bold">{{ fac.name }}</td>
-                    <td class="text-secondary">{{ fac.email|default:"-" }}</td>
-                    <td>{{ fac.designation }}</td>
-                    <td>{{ fac.department|default:"-" }}</td>
-                    <td class="text-end">
+                <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;"><input class="form-check-input row-checkbox" type="checkbox" value="{{ fac.id }}"></td>
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;">{{ forloop.counter0|add:page_obj.start_index }}</td>
+                    <td style="padding: 12px; font-weight: 600; border-right: 1px solid #dee2e6;">{{ fac.name }}</td>
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;">{{ fac.email|default:"-" }}</td>
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;">{{ fac.designation }}</td>
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;">{{ fac.department|default:"-" }}</td>
+                    <td style="padding: 12px; text-align: center;">
                         {% if permissions.can_add_faculty %}
-                        <button class="btn btn-link text-primary p-0 me-3 custom-hover"
-                            onclick="editFaculty({{ fac.id }})"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editFaculty({{ fac.id }})"><i class="bi bi-pencil"></i></button>
                         {% endif %}
                         {% if permissions.can_delete_faculty %}
-                        <button class="btn btn-link text-danger p-0"
-                            onclick="deleteFaculty({{ fac.id }}, '{{ fac.name|escapejs }}')"><i class="bi bi-trash"
-                                style="color: var(--accent)"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteFaculty({{ fac.id }}, '{{ fac.name|escapejs }}')"><i class="bi bi-trash"></i></button>
                         {% endif %}
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center text-secondary py-4">No results found for your search.</td>
+                    <td colspan="7" class="text-center py-4" style="color: #6c757d;">No results found for your search.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -256,13 +253,14 @@
             });
     }
 
-    function saveFaculty() {
+    function saveFaculty(event) {
         const id = document.getElementById('facultyId').value;
         const name = document.getElementById('facName').value;
         const desig = document.getElementById('facDesig').value;
         const dept = document.getElementById('facDept').value;
         const email = document.getElementById('facEmail').value;
         const url = id ? `/faculty/${id}/edit/` : `/faculty/add/`;
+        const submitBtn = event.target;
 
         // Validate email if provided
         if (email && !email.toLowerCase().endsWith('@sfscollege.in')) {
@@ -273,6 +271,11 @@
             }
             return;
         }
+
+        // Disable button and show loading state
+        submitBtn.disabled = true;
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Saving...';
 
         const fd = new FormData();
         fd.append('name', name);
@@ -290,9 +293,19 @@
                 if (data.success) {
                     location.reload();
                 } else {
+                    // Re-enable button on error
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
                     if (typeof showToast === 'function') showToast(data.message, 'error');
                     else alert(data.message);
                 }
+            })
+            .catch(error => {
+                // Re-enable button on network error
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                if (typeof showToast === 'function') showToast('Network error. Please try again.', 'error');
+                else alert('Network error. Please try again.');
             });
     }
 

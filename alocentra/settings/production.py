@@ -28,3 +28,12 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:65462",
 ]
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Email configuration - Mailjet SMTP
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'in-v3.mailjet.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config('MAILJET_API_KEY')
+EMAIL_HOST_PASSWORD = config('MAILJET_SECRET_KEY')
+DEFAULT_FROM_EMAIL = config('MAILJET_FROM_EMAIL')

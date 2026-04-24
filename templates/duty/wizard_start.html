@@ -6,7 +6,65 @@
             style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
             <h3 class="fw-bold mb-4 text-center" style="color: var(--text-primary);">Configure Duty Session</h3>
 
-
+            <div class="d-flex justify-content-end mb-3">
+                <div class="dropdown">
+                    <button class="btn btn-outline-custom dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                        aria-expanded="false">
+                        Previous Sessions
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark" style="min-width: 360px; max-height: 320px; overflow: auto;">
+                        {% if sessions %}
+                            {% for s in sessions|slice:":20" %}
+                                <li>
+                                    {% if s.status == 'FINALIZED' %}
+                                        <a class="dropdown-item" href="{% url 'duty:results' s.id %}">
+                                            <div class="d-flex justify-content-between gap-2">
+                                                <div class="text-wrap">
+                                                    <div class="fw-bold">{{ s.title }}</div>
+                                                    <div class="small text-secondary">
+                                                        {% if s.timetable %}
+                                                            {{ s.timetable.exam_type.name }}
+                                                        {% else %}
+                                                            {{ s.exam_type.name }}
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="small text-secondary">{{ s.created_at|date:"d M Y" }}</div>
+                                                </div>
+                                                <span class="badge" style="background: rgba(0, 201, 167, 0.15); color: var(--secondary); border: 1px solid var(--secondary);">
+                                                    FINALIZED
+                                                </span>
+                                            </div>
+                                        </a>
+                                    {% else %}
+                                        <a class="dropdown-item" href="{% url 'duty:session_resume' s.id %}">
+                                            <div class="d-flex justify-content-between gap-2">
+                                                <div class="text-wrap">
+                                                    <div class="fw-bold">{{ s.title }}</div>
+                                                    <div class="small text-secondary">
+                                                        {% if s.timetable %}
+                                                            {{ s.timetable.exam_type.name }}
+                                                        {% else %}
+                                                            {{ s.exam_type.name }}
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="small text-secondary">{{ s.created_at|date:"d M Y" }}</div>
+                                                </div>
+                                                <span class="badge" style="background: rgba(108,99,255,0.15); color: var(--primary-light); border: 1px solid var(--primary-light);">
+                                                    DRAFT
+                                                </span>
+                                            </div>
+                                        </a>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        {% else %}
+                            <li>
+                                <span class="dropdown-item-text text-secondary">No previous sessions.</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
             <form method="POST">
                 {% csrf_token %}
                 <div class="mb-4">
