@@ -14,57 +14,54 @@
 <div class="card bg-surface border-subtle radius-card shadow-card p-4 mx-auto"
     style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 20px;">
     <div class="table-responsive">
-        <table class="table table-borderless table-hover mb-0">
-            <thead style="background: var(--bg-elevated); border-bottom: 2px solid var(--border-subtle);">
-                <tr class="text-secondary small text-uppercase" style="letter-spacing: 0.05em;">
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Added On</th>
-                    <th class="text-end">Actions</th>
+        <table class="table table-bordered table-hover mb-0" style="border-color: #dee2e6; font-size: 14px;">
+            <thead style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
+                <tr class="text-secondary small text-uppercase fw-bold" style="letter-spacing: 0.05em; color: #495057;">
+                    <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">User</th>
+                    <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Role</th>
+                    <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Status</th>
+                    <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Added On</th>
+                    <th style="padding: 12px; text-align: center;">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody style="color: #212529;">
                 {% for u in users_list %}
-                <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-primary);"
-                    class="align-middle">
-                    <td>
+                <tr style="border-bottom: 1px solid #dee2e6;" class="align-middle">
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;">
                         <div class="d-flex align-items-center">
                             <div class="user-avatar me-3 text-white"
-                                style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold;">
+                                style="width: 40px; height: 40px; border-radius: 50%; background: #6c63ff; display: flex; align-items: center; justify-content: center; font-weight: bold;">
                                 {{ u.name|make_list|first|upper }}
                             </div>
                             <div>
                                 <div class="fw-bold">{{ u.name }}</div>
-                                <div class="small text-secondary">{{ u.email }}</div>
+                                <div class="small text-muted">{{ u.email }}</div>
                             </div>
                         </div>
                     </td>
-                    <td>
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;">
                         {% if u.is_coe %}
                         <span class="badge bg-primary">COE</span>
                         {% else %}
-                        <span class="badge"
-                            style="background: rgba(108,99,255,0.15); color: var(--primary-light);">STAFF</span>
+                        <span class="badge bg-secondary">STAFF</span>
                         {% endif %}
                     </td>
-                    <td>
-                        {% if u.is_active %}
-                        <span class="text-success small"><i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i>
-                            Active</span>
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;">
+                        {% if u.password_set %}
+                        <span class="badge bg-success">Active</span>
                         {% else %}
-                        <span class="text-warning small"><i class="bi bi-circle-fill me-1" style="font-size: 8px;"></i>
-                            Pending</span>
+                        <span class="badge bg-warning text-dark">Pending</span>
                         {% endif %}
                     </td>
-                    <td class="text-secondary">{{ u.created_at|date:"d M Y" }}</td>
-                    <td class="text-end">
-                        {% if not u.is_coe %}
-                        <button class="btn btn-link text-danger p-0"
-                            onclick="deleteUser('{{ u.id }}', '{{ u.name|escapejs }}')"><i class="bi bi-trash"
-                                style="color: var(--accent);"></i></button>
-                        {% endif %}
+                    <td style="padding: 12px; border-right: 1px solid #dee2e6;">{{ u.created_at|date:"d M Y" }}</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteUser({{ u.id }}, '{{ u.name|escapejs }}')"><i
+                                class="bi bi-trash"></i></button>
                     </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4" style="color: #6c757d;">No users added yet.</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -48,6 +48,10 @@ def evaluate_shortage(session):
         days = _timetable_exam_dates(session.timetable)
     else:
         days = _session_days(session) if session.date_from and session.date_to else []
+    
+    # Get exams per day to calculate required slots
+    exams_per_day = getattr(session.timetable, 'exams_per_day', 1) if session.timetable else 1
+    
     inv_map = {
         (row['date'], row['room_id'])
         for row in DutyAssignment.objects.filter(session=session, is_reliever=False).values('date', 'room_id')
@@ -60,11 +64,13 @@ def evaluate_shortage(session):
     rel_short = []
     for d in days:
         for room in rooms:
-            key = (d, room.id)
-            if key not in inv_map:
-                inv_short.append((d, room.room_no))
-            if key not in rel_map:
-                rel_short.append((d, room.room_no))
+            # Each room needs assignments for each exam slot per day
+            for slot_num in range(exams_per_day):
+                key = (d, room.id)
+                if key not in inv_map:
+                    inv_short.append((d, room.room_no))
+                if key not in rel_map:
+                    rel_short.append((d, room.room_no))
     return {'invigilator': inv_short, 'reliever': rel_short}
 
 
@@ -106,9 +112,14 @@ def generate_assignments(session):
         return
 
     slots = []
+    # Create multiple slots per date based on timetable's exams_per_day setting
+    exams_per_day = getattr(session.timetable, 'exams_per_day', 1) if session.timetable else 1
+    
     for d in days:
         for sr in session_rooms:
-            slots.append((d, sr.room))
+            # Create multiple slots for this date if exams_per_day > 1
+            for slot_num in range(exams_per_day):
+                slots.append((d, sr.room, slot_num))  # Add slot_num for tracking
 
     available_pool = []
     for a in assignments:
@@ -139,7 +150,7 @@ def generate_assignments(session):
     }
 
     results = []
-    for date, room in slots:
+    for date, room, slot_num in slots:
         if not available_pool:
             break
 
