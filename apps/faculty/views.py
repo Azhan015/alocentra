@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from apps.accounts.utils import permission_required_custom, get_user_permissions
 from .models import Faculty
 from django.core.paginator import Paginator
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 import json
 
 @login_required
@@ -81,6 +81,7 @@ def add_faculty(request):
 
 @login_required
 @permission_required_custom('can_add_faculty')
+@require_http_methods(['GET', 'POST'])
 def edit_faculty(request, id):
     faculty = get_object_or_404(Faculty, id=id, is_active=True)
     if request.method == 'GET':
@@ -106,10 +107,13 @@ def edit_faculty(request, id):
 @permission_required_custom('can_delete_faculty')
 @require_POST
 def delete_faculty(request, id):
-    faculty = get_object_or_404(Faculty, id=id)
-    faculty.is_active = False
-    faculty.save()
-    return JsonResponse({'success': True, 'message': 'Faculty deleted'})
+    try:
+        updated = Faculty.objects.filter(id=id).update(is_active=False)
+        if updated == 0:
+            return JsonResponse({'success': False, 'message': 'Faculty not found'})
+        return JsonResponse({'success': True, 'message': 'Faculty deleted'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
 
 @login_required
 @permission_required_custom('can_delete_faculty')
@@ -130,28 +134,53 @@ def import_faculty(request):
     try:
         data = json.loads(request.body)
         faculty_data = data.get('faculty', [])
-        imported = 0
-        skipped = 0
-        for f in faculty_data:
-            name = str(f.get('name')).strip() if f.get('name') else ''
-            designation = str(f.get('designation')).strip() if f.get('designation') else ''
-            department = str(f.get('department')).strip() if f.get('department') else ''
-            email = str(f.get('email')).strip() if f.get('email') else ''
-            
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Invalid JSON: {str(e)}'})
+
+    imported = 0
+    skipped = 0
+    errors = []
+
+    for idx, f in enumerate(faculty_data, start=1):
+        try:
+            # Support both lowercase and title-case keys from Excel parsers
+            name = str(f.get('name') or f.get('Name') or '').strip()
+            designation = str(f.get('designation') or f.get('Designation') or '').strip()
+            department = str(f.get('department') or f.get('Department') or '').strip()
+            email_raw = str(f.get('email') or f.get('Email') or '').strip()
+
             if not name or not designation:
+                errors.append({'row': idx, 'reason': 'Missing name or designation'})
                 continue
-            
-            # Validate email if provided
-            if email and not email.lower().endswith('@sfscollege.in'):
-                skipped += 1
-                continue
-            
+
+            # Only validate email if one is provided — do NOT skip the row, just clear invalid email
+            email = ''
+            if email_raw:
+                if email_raw.lower().endswith('@sfscollege.in'):
+                    email = email_raw
+                # If email is provided but invalid domain, import faculty without email
+
             # Avoid exact duplicates
             if Faculty.objects.filter(name=name, department=department, is_active=True).exists():
                 skipped += 1
-            else:
-                Faculty.objects.create(name=name, designation=designation, department=department, email=email, created_by=request.user)
-                imported += 1
-        return JsonResponse({'success': True, 'message': f'Successfully imported {imported} faculty members. {skipped} duplicates skipped.'})
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)})
+                continue
+
+            Faculty.objects.create(
+                name=name,
+                designation=designation,
+                department=department,
+                email=email if email else None,
+                created_by=request.user,
+            )
+            imported += 1
+
+        except Exception as e:
+            errors.append({'row': idx, 'reason': str(e)})
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Successfully imported {imported} faculty members. {skipped} duplicates skipped. {len(errors)} errors.',
+        'imported': imported,
+        'skipped': skipped,
+        'errors': errors,
+    })

@@ -3,7 +3,7 @@
 <div class="mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
     <div>
         <h3 class="fw-bold m-0" style="color: var(--text-primary);">Timetable View</h3>
-        <p class="text-secondary mt-1 mb-0">{{ timetable.exam_type.name }} - {{ timetable.date_from|date:"d M Y" }} to {{ timetable.date_to|date:"d M Y" }}</p>
+        <p class="text-secondary mt-1 mb-0">{{ timetable.exam_type.name }} — {{ timetable.date_from|date:"d M Y" }} to {{ timetable.date_to|date:"d M Y" }}</p>
     </div>
     <div class="d-flex gap-2">
         <button class="btn btn-outline-custom d-flex align-items-center" onclick="window.print()">
@@ -22,42 +22,38 @@
             <thead style="background: var(--bg-elevated); border-bottom: 2px solid var(--border-subtle);">
                 <tr class="text-secondary small text-uppercase" style="letter-spacing: 0.05em;">
                     <th style="min-width: 250px; padding: 12px;">Program</th>
-                    {% for date in dates %}
+                    {% for dh in date_headers %}
                     <th style="min-width: 180px; padding: 12px; text-align: center;">
-                        {{ date|date:"d M" }}<br>
-                        <small class="text-secondary">{{ date|date:"D" }}</small>
-                        {% with time_info=date_time_map|lookup:date|stringformat:"s" %}
-                            {% if time_info.time %}
-                                <br><small class="text-primary">{{ time_info.time }}</small>
-                            {% elif default_time %}
-                                <br><small class="text-primary">{{ default_time }}</small>
-                            {% endif %}
-                        {% endwith %}
+                        {{ dh.date|date:"d M" }}<br>
+                        <small class="text-secondary">{{ dh.date|date:"D" }}</small>
+                        {% if dh.time %}
+                            <br><small class="text-primary">{{ dh.time }}</small>
+                        {% elif default_time %}
+                            <br><small class="text-primary">{{ default_time }}</small>
+                        {% endif %}
                     </th>
                     {% endfor %}
                 </tr>
             </thead>
             <tbody>
-                {% for pid, sem in row_keys %}
+                {% for row in timetable_rows %}
                 <tr style="border-bottom: 1px solid var(--border-subtle); color: var(--text-primary);">
-                    <td style="padding: 12px; font-weight: 500;">
-                        {{ labels|lookup:tuple:pid,sem }}
-                    </td>
-                    {% for date in dates %}
+                    <td style="padding: 12px; font-weight: 500;">{{ row.label }}</td>
+                    {% for course in row.cells %}
                     <td style="padding: 12px; text-align: center; vertical-align: middle;">
-                        {% with course=course_lookup|lookup:tuple:pid,sem,date|stringformat:"s" %}
-                            {% if course %}
-                                <span class="badge bg-primary">{{ course }}</span>
-                            {% else %}
-                                <span class="text-muted">--</span>
-                            {% endif %}
-                        {% endwith %}
+                        {% if course and course != '--' %}
+                            <span class="badge bg-primary" style="font-size: 12px;">{{ course }}</span>
+                        {% else %}
+                            <span class="text-muted">--</span>
+                        {% endif %}
                     </td>
                     {% endfor %}
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="{{ dates|add:1 }}" class="text-center text-secondary py-4">No timetable data available.</td>
+                    <td colspan="100" class="text-center text-secondary py-4">
+                        No timetable data available.
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -67,22 +63,15 @@
 
 <style>
 @media print {
-    body * {
-        visibility: hidden;
-    }
-    #timetableViewTable, #timetableViewTable * {
-        visibility: visible;
-    }
+    body * { visibility: hidden; }
+    #timetableViewTable, #timetableViewTable * { visibility: visible; }
     #timetableViewTable {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
     }
-    .table {
-        color: #000 !important;
-        background: #fff !important;
-    }
+    .table { color: #000 !important; background: #fff !important; }
     .table th {
         background: #f8f9fa !important;
         color: #000 !important;
@@ -100,12 +89,4 @@
     }
 }
 </style>
-
-<script>
-// Add a simple lookup filter for template use
-window.addEventListener('DOMContentLoaded', function() {
-    // This is a placeholder for any JavaScript needed
-    console.log('Timetable view loaded');
-});
-</script>
 {% endblock %}

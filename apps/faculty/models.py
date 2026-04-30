@@ -25,5 +25,4 @@ class Faculty(models.Model):
                 raise ValidationError({'email': 'Email must be a valid sfscollege.in address'})
     
     def save(self, *args, **kwargs):
-        self.full_clean()
         super().save(*args, **kwargs)

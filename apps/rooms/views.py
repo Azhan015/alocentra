@@ -85,19 +85,51 @@ def import_rooms(request):
     try:
         data = json.loads(request.body)
         rooms_data = data.get('rooms', [])
-        imported = 0
-        skipped = 0
-        errors = []
-        for r in rooms_data:
-            room_no = str(r.get('room_no')).strip()
-            capacity = r.get('capacity')
-            if not room_no or not capacity:
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Invalid JSON: {str(e)}'})
+
+    imported = 0
+    skipped = 0
+    errors = []
+
+    for idx, r in enumerate(rooms_data, start=1):
+        try:
+            room_no = str(r.get('room_no') or r.get('Room No') or r.get('room') or '').strip()
+            capacity_raw = r.get('capacity') or r.get('Capacity')
+
+            if not room_no:
+                errors.append({'row': idx, 'reason': 'Missing room number'})
                 continue
+
+            if capacity_raw is None:
+                errors.append({'row': idx, 'reason': 'Missing capacity'})
+                continue
+
+            # Cast to int safely — handles "30", "30.0", 30, 30.0
+            try:
+                capacity = int(float(str(capacity_raw)))
+            except (ValueError, TypeError):
+                errors.append({'row': idx, 'reason': f'Invalid capacity value: {capacity_raw}'})
+                continue
+
+            if capacity < 0:
+                errors.append({'row': idx, 'reason': f'Capacity cannot be negative: {capacity}'})
+                continue
+
             if Room.objects.filter(room_no=room_no, is_active=True).exists():
                 skipped += 1
-            else:
-                Room.objects.create(room_no=room_no, capacity=capacity, created_by=request.user)
-                imported += 1
-        return JsonResponse({'success': True, 'message': f'Successfully imported {imported} rooms. {skipped} duplicates skipped.'})
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)})
+                continue
+
+            Room.objects.create(room_no=room_no, capacity=capacity, created_by=request.user)
+            imported += 1
+
+        except Exception as e:
+            errors.append({'row': idx, 'reason': str(e)})
+
+    return JsonResponse({
+        'success': True,
+        'message': f'Successfully imported {imported} rooms. {skipped} duplicates skipped. {len(errors)} errors.',
+        'imported': imported,
+        'skipped': skipped,
+        'errors': errors,
+    })

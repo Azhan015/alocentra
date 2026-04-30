@@ -36,9 +36,341 @@
             <input type="date" id="date_to" class="form-control bg-elevated border-subtle text-white" value="{{ timetable.date_to|date:'Y-m-d' }}">
         </div>
         <div class="col-md-2 d-flex align-items-end">
-            <button type="button" class="btn btn-outline-custom w-100" onclick="openSelectionStep()">Generate Grid</button>
+            <button type="button" class="btn btn-outline-custom w-100" id="generateGridBtn">Generate Grid</button>
         </div>
     </div>
+    
+    <script>
+        // Simple inline function to ensure it's immediately available
+        function openSelectionStep() {
+            console.log("Generate Grid button clicked");
+            
+            // Get required elements
+            const dateFrom = document.getElementById('date_from').value;
+            const dateTo = document.getElementById('date_to').value;
+            const dateError = document.getElementById('dateError');
+            const selectionPanel = document.getElementById('selectionPanel');
+            
+            // Clear previous errors
+            if (dateError) {
+                dateError.textContent = '';
+                dateError.classList.add('d-none');
+            }
+            
+            // Validate dates
+            if (!dateFrom || !dateTo) {
+                if (dateError) {
+                    dateError.textContent = 'Please select both Start Date and End Date.';
+                    dateError.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            if (new Date(dateFrom) > new Date(dateTo)) {
+                if (dateError) {
+                    dateError.textContent = 'End Date cannot be before Start Date.';
+                    dateError.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            // Wait for main script to load and then call the main function
+            setTimeout(function() {
+                if (typeof window.mainOpenSelectionStep === 'function') {
+                    console.log("Calling mainOpenSelectionStep function");
+                    window.mainOpenSelectionStep();
+                } else {
+                    console.log("Main function not ready yet, showing basic panel");
+                    // Show selection panel anyway
+                    if (selectionPanel) {
+                        selectionPanel.classList.remove('d-none');
+                        // Try to populate programs manually if data is available
+                        if (typeof allGridRows !== 'undefined' && allGridRows && allGridRows.length > 0) {
+                            populateProgramsManually();
+                        } else {
+                            // Show message that data is still loading
+                            const programsChecklist = document.getElementById('programsChecklist');
+                            if (programsChecklist) {
+                                programsChecklist.innerHTML = '<div class="text-warning">Loading programs...</div>';
+                            }
+                        }
+                    }
+                }
+            }, 100);
+        }
+        
+        // Manual program population function
+        function populateProgramsManually() {
+            if (typeof allGridRows === 'undefined' || !allGridRows || allGridRows.length === 0) {
+                console.log("No grid rows data available");
+                return;
+            }
+            
+            const programsChecklist = document.getElementById('programsChecklist');
+            const semestersChecklist = document.getElementById('semestersChecklist');
+            
+            if (!programsChecklist || !semestersChecklist) {
+                console.log("Checklist elements not found");
+                return;
+            }
+            
+            console.log("Populating programs manually:", allGridRows.length, "rows");
+            
+            // Populate programs
+            const programMap = new Map();
+            allGridRows.forEach(r => {
+                programMap.set(String(r.program_id), r.program_name);
+            });
+            
+            programsChecklist.innerHTML = '';
+            Array.from(programMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+                const idSafe = `program_cb_${id}`;
+                const label = document.createElement('label');
+                label.className = 'd-flex align-items-center gap-2';
+                label.htmlFor = idSafe;
+                
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = id;
+                cb.id = idSafe;
+                cb.checked = true;
+                
+                const t = document.createElement('span');
+                t.className = 'text-secondary';
+                t.textContent = name;
+                
+                label.appendChild(cb);
+                label.appendChild(t);
+                programsChecklist.appendChild(label);
+            });
+            
+            // Populate semesters (1-6)
+            semestersChecklist.innerHTML = '';
+            for (let sem = 1; sem <= 6; sem++) {
+                const semStr = String(sem);
+                const idSafe = `sem_cb_${semStr}`;
+                const label = document.createElement('label');
+                label.className = 'd-flex align-items-center gap-2';
+                label.htmlFor = idSafe;
+                
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = semStr;
+                cb.id = idSafe;
+                cb.checked = true;
+                
+                const t = document.createElement('span');
+                t.className = 'text-secondary';
+                t.textContent = `Sem ${sem}`;
+                
+                label.appendChild(cb);
+                label.appendChild(t);
+                semestersChecklist.appendChild(label);
+            }
+            
+            console.log("Programs and semesters populated successfully");
+            
+            // Setup dropdown toggle handlers
+            setupDropdownHandlers();
+        }
+        
+        // Setup dropdown handlers function
+        function setupDropdownHandlers() {
+            const programsDropdownBtn = document.getElementById('programsDropdownBtn');
+            const programsDropdownPanel = document.getElementById('programsDropdownPanel');
+            const semestersDropdownBtn = document.getElementById('semestersDropdownBtn');
+            const semestersDropdownPanel = document.getElementById('semestersDropdownPanel');
+            
+            if (!programsDropdownBtn || !programsDropdownPanel || !semestersDropdownBtn || !semestersDropdownPanel) {
+                console.log("Dropdown elements not found, retrying...");
+                setTimeout(setupDropdownHandlers, 100);
+                return;
+            }
+            
+            console.log("Setting up dropdown handlers");
+            
+            // Programs dropdown
+            programsDropdownBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                programsDropdownPanel.classList.toggle('d-none');
+                semestersDropdownPanel.classList.add('d-none');
+            });
+            
+            // Semesters dropdown
+            semestersDropdownBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                semestersDropdownPanel.classList.toggle('d-none');
+                programsDropdownPanel.classList.add('d-none');
+            });
+            
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!programsDropdownBtn.contains(e.target) && !programsDropdownPanel.contains(e.target)) {
+                    programsDropdownPanel.classList.add('d-none');
+                }
+                if (!semestersDropdownBtn.contains(e.target) && !semestersDropdownPanel.contains(e.target)) {
+                    semestersDropdownPanel.classList.add('d-none');
+                }
+            });
+            
+            // Update button labels when checkboxes change
+            const updateProgramsBtnLabel = function() {
+                const checked = programsDropdownPanel.querySelectorAll('input[type="checkbox"]:checked').length;
+                const label = programsDropdownBtn.querySelector('#programsBtnLabel');
+                if (label) {
+                    label.textContent = checked > 0 ? `Programs (${checked})` : 'Programs';
+                }
+            };
+            
+            const updateSemestersBtnLabel = function() {
+                const checked = semestersDropdownPanel.querySelectorAll('input[type="checkbox"]:checked').length;
+                const label = semestersDropdownBtn.querySelector('#semestersBtnLabel');
+                if (label) {
+                    label.textContent = checked > 0 ? `Semesters (${checked})` : 'Semesters';
+                }
+            };
+            
+            // Add event listeners to checkboxes
+            programsDropdownPanel.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', updateProgramsBtnLabel);
+            });
+            
+            semestersDropdownPanel.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', updateSemestersBtnLabel);
+            });
+            
+            // Initial label update
+            updateProgramsBtnLabel();
+            updateSemestersBtnLabel();
+        }
+        
+        // Simple confirmSelection function for inline script
+        function confirmSelection() {
+            console.log("Confirm selection clicked");
+            
+            const programsChecklist = document.getElementById('programsChecklist');
+            const semestersChecklist = document.getElementById('semestersChecklist');
+            const dateError = document.getElementById('dateError');
+            
+            if (!programsChecklist || !semestersChecklist) {
+                console.error("Checklist elements not found");
+                return;
+            }
+            
+            // Get selected programs and semesters
+            const selectedPrograms = Array.from(programsChecklist.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+            const selectedSemesters = Array.from(semestersChecklist.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+            
+            if (selectedPrograms.length === 0 || selectedSemesters.length === 0) {
+                if (dateError) {
+                    dateError.textContent = 'Please select at least one program and one semester.';
+                    dateError.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            // Clear any error messages
+            if (dateError) {
+                dateError.textContent = '';
+                dateError.classList.add('d-none');
+            }
+            
+            // Generate the timetable grid
+            generateTimetableGrid(selectedPrograms, selectedSemesters);
+        }
+        
+        // Simple timetable generation function
+        function generateTimetableGrid(selectedPrograms, selectedSemesters) {
+            console.log("Generating timetable grid for programs:", selectedPrograms, "semesters:", selectedSemesters);
+            
+            if (typeof allGridRows === 'undefined' || !allGridRows || allGridRows.length === 0) {
+                console.error("No grid data available");
+                const dateError = document.getElementById('dateError');
+                if (dateError) {
+                    dateError.textContent = 'No data available. Please make sure programs and courses are set up first.';
+                    dateError.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            // Filter rows based on selection
+            const filteredRows = allGridRows.filter(row => 
+                selectedPrograms.includes(String(row.program_id)) && 
+                selectedSemesters.includes(String(row.semester))
+            );
+            
+            console.log("Filtered rows:", filteredRows.length);
+            
+            if (filteredRows.length === 0) {
+                const dateError = document.getElementById('dateError');
+                if (dateError) {
+                    dateError.textContent = 'No courses found for the selected programs and semesters.';
+                    dateError.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            // Generate date range
+            const dateFrom = document.getElementById('date_from').value;
+            const dateTo = document.getElementById('date_to').value;
+            const dates = [];
+            let d = new Date(dateFrom);
+            const end = new Date(dateTo);
+            while (d <= end) {
+                if (d.getDay() !== 0) { // Skip Sundays
+                    dates.push(d.toISOString().split('T')[0]);
+                }
+                d.setDate(d.getDate() + 1);
+            }
+            
+            // Build grid headers
+            const gridHead = document.getElementById('gridHead');
+            const gridBody = document.getElementById('gridBody');
+            
+            gridHead.innerHTML = '<tr><th>Program / Semester</th>' + dates.map(date => {
+                const d = new Date(date);
+                return `<th>${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</th>`;
+            }).join('') + '</tr>';
+            
+            // Build grid body
+            gridBody.innerHTML = '';
+            filteredRows.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td><strong>${row.program_name}</strong><br>Sem ${row.semester}</td>`;
+                
+                dates.forEach(date => {
+                    const td = document.createElement('td');
+                    td.innerHTML = '<select class="form-select form-select-sm custom-cell-select"><option value="">Select Course</option></select>';
+                    tr.appendChild(td);
+                });
+                
+                gridBody.appendChild(tr);
+            });
+            
+            // Populate course options
+            if (typeof academicCourses !== 'undefined' && academicCourses) {
+                const selects = gridBody.querySelectorAll('select');
+                selects.forEach(select => {
+                    academicCourses.forEach(course => {
+                        const option = document.createElement('option');
+                        option.value = course.id;
+                        option.textContent = course.name;
+                        select.appendChild(option);
+                    });
+                });
+            }
+            
+            console.log("Timetable grid generated successfully");
+        }
+        
+        // Also add event listener as backup
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('generateGridBtn');
+            if (btn) {
+                btn.addEventListener('click', openSelectionStep);
+            }
+        });
+    </script>
     <div class="row g-3 mt-2">
         <div class="col-md-12">
             <label class="form-label text-secondary small text-uppercase fw-bold">Exams Per Day</label>
@@ -106,6 +438,10 @@
 </div>
 
 <script>
+    // Debug: Check if data is being loaded properly
+    console.log('Debug - Grid rows data:', {{ grid_rows_json|safe }});
+    console.log('Debug - Academic courses data:', {{ academic_courses_json|safe }});
+    
     const allGridRows = {{ grid_rows_json|safe }};
     const academicCourses = {{ academic_courses_json|safe }};
     const existingCells = {{ existing_cells_json|safe }};
@@ -129,11 +465,7 @@
     // This prevents regressions if the page loads with an early JS error elsewhere.
     (function initDateMinsEarly() {
         if (!dateFromInput || !dateToInput) return;
-        const today = new Date();
-        const minStart = toDateStringLocal(today);
-        dateFromInput.min = minStart;
         if (dateFromInput.value) dateToInput.min = dateFromInput.value;
-        else dateToInput.min = minStart;
     })();
 
     function closeDropdownPanels() {
@@ -233,15 +565,19 @@
         document.getElementById('gridHead').innerHTML = '';
         document.getElementById('gridBody').innerHTML = '';
     }
-    function openSelectionStep() {
+    function mainOpenSelectionStep() {
         resetGridOnly();
         if (!validateDateInputs()) return;
+        
+        if (!allGridRows || allGridRows.length === 0) {
+            showDateError('No programs found. Go to Settings → Add Department → Add Program → Add Courses first.');
+            return;
+        }
+
+        showDateError('');
         hydrateCompactSelectors();
         selectionPanel.classList.remove('d-none');
     }
-    // Ensure inline onclick handlers can find these functions even if the script
-    // is treated as a module in some deployments.
-    window.openSelectionStep = openSelectionStep;
 
     function hydrateCompactSelectors() {
         const programMap = new Map();
@@ -399,6 +735,26 @@
             showDateError('Please generate grid and confirm Program + Semester selection.');
             return;
         }
+        
+        // Check if there are any cells with courses assigned
+        const cellsWithCourses = [];
+        document.querySelectorAll('.custom-cell-select').forEach(sel => {
+            if (sel.value) {
+                cellsWithCourses.push({
+                    program_id: sel.dataset.programId,
+                    semester: sel.dataset.semester,
+                    date: sel.dataset.date,
+                    course_id: sel.value || null
+                });
+            }
+        });
+        
+        if (cellsWithCourses.length === 0) {
+            if (!confirm('No courses have been assigned to the timetable. Do you want to save an empty timetable?')) {
+                return;
+            }
+        }
+        
         const payload = {
             exam_type: document.getElementById('exam_type').value,
             date_from: dateFromInput.value,
@@ -408,6 +764,7 @@
             selected_rows: selectedRows.map(r => ({ program_id: r.program_id, semester: r.semester })),
             cells: []
         };
+        
         document.querySelectorAll('.custom-cell-select').forEach(sel => {
             payload.cells.push({
                 program_id: sel.dataset.programId,
@@ -416,6 +773,13 @@
                 course_id: sel.value || null
             });
         });
+        
+        // Show saving indicator
+        const saveBtn = document.querySelector('button[onclick="saveTimetable()"]');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Saving...';
+        
         fetch('{{ request.path }}', {
             method: 'POST',
             body: JSON.stringify(payload),
@@ -423,6 +787,10 @@
         })
             .then(r => r.json())
             .then(data => {
+                // Restore button
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+                
                 if (data.success) {
                     if (typeof showToast === 'function') showToast('Timetable saved successfully!', 'success');
                     else alert('Saved!');
@@ -433,6 +801,13 @@
                 } else {
                     alert('Error: ' + data.message);
                 }
+            })
+            .catch(error => {
+                // Restore button
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalText;
+                console.error('Save error:', error);
+                alert('Network error while saving timetable. Please try again.');
             });
     }
     window.saveTimetable = saveTimetable;
@@ -458,25 +833,25 @@
         const menu = document.getElementById('dateContextMenu');
         if (!menu.contains(e.target)) hideContextMenu();
     });
+
     document.addEventListener('DOMContentLoaded', function () {
-        attachDropdownToggleHandlers();
-        const today = new Date();
-        dateFromInput.min = toDateStringLocal(today);
-        if (dateFromInput.value && dateFromInput.value < dateFromInput.min) dateFromInput.value = dateFromInput.min;
-        if (dateFromInput.value) dateToInput.min = dateFromInput.value;
-        dateFromInput.addEventListener('change', function () {
-            if (this.value) dateToInput.min = this.value;
-            validateDateInputs();
-            selectionPanel.classList.add('d-none');
-            selectedRows = [];
-            resetGridOnly();
-        });
-        dateToInput.addEventListener('change', function () {
-            validateDateInputs();
-            selectionPanel.classList.add('d-none');
-            selectedRows = [];
-            resetGridOnly();
-        });
+    attachDropdownToggleHandlers();
+    // Removed strict min date — allows editing existing timetables with past dates
+    if (dateFromInput.value) dateToInput.min = dateFromInput.value;
+    dateFromInput.addEventListener('change', function () {
+        if (this.value) dateToInput.min = this.value;
+        validateDateInputs();
+        selectionPanel.classList.add('d-none');
+        selectedRows = [];
+        resetGridOnly();
+    });
+    dateToInput.addEventListener('change', function () {
+        validateDateInputs();
+        selectionPanel.classList.add('d-none');
+        selectedRows = [];
+        resetGridOnly();
+    });
+
         if (existingCells.length) {
             existingCells.forEach(c => selectedRowKeys.add(`${c.program_id}-${c.semester}`));
             if (dateFromInput.value && dateToInput.value) {
@@ -492,10 +867,18 @@
                     if (!existingDateSet.has(ds)) removedDates.add(ds);
                 });
             }
-            openSelectionStep();
+            mainOpenSelectionStep();
             confirmSelection();
         }
     });
+    
+    // Ensure all functions are available globally for inline onclick handlers
+    window.mainOpenSelectionStep = mainOpenSelectionStep;
+    window.confirmSelection = confirmSelection;
+    window.markNoExam = markNoExam;
+    window.saveTimetable = saveTimetable;
+    window.exportExcel = exportExcel;
+    window.exportPDF = exportPDF;
 </script>
 <style>
     .custom-cell-select.muted-empty {

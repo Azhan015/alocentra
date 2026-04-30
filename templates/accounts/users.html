@@ -77,6 +77,8 @@
             <div class="modal-header border-0">
                 <h5 class="modal-title" style="color: var(--text-primary);">Invite New User</h5>
                 <button type="button" class="btn-close btn-close-white " data-bs-dismiss="modal"></button>
+                <!--Delete user button-->
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('{{ u.id }}', '{{ u.name|escapejs }}')"><iclass="bi bi-trash"></i></button>
             </div>
             <div class="modal-body pb-4">
                 <form id="userForm">
@@ -219,7 +221,7 @@
             alert("Please fill all required fields."); return;
         }
 
-        fetch('/users/add/', {
+        fetch('/accounts/users/add/', {
             method: 'POST',
             body: JSON.stringify(payload),
             headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
@@ -237,7 +239,7 @@
 
     function deleteUser(id, name) {
         if (confirm(`Are you sure you want to delete user ${name}? This cannot be undone.`)) {
-            fetch(`/users/${id}/delete/`, {
+            fetch(`/accounts/users/${id}/delete/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' }
             })
