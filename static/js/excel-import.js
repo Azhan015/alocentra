@@ -91,7 +91,7 @@ function renderPreview() {
         if (currentImportType === 'rooms') {
             tr.innerHTML = `<td>${row.room_no || ''}</td><td>${row.capacity || ''}</td>`;
         } else {
-            tr.innerHTML = `<td>${row.name || ''}</td><td>${row.designation || ''}</td><td>${row.department || ''}</td>`;
+            tr.innerHTML = `<td>${row.name || ''}</td><td>${row.designation || ''}</td><td>${row.department || ''}</td><td>${row.email || ''}</td>`;
         }
         tbody.appendChild(tr);
     });
@@ -104,7 +104,7 @@ function resetImport() {
     document.getElementById('importStep1').classList.remove('d-none');
 }
 
-function confirmImportRooms() {
+function confirmImportFaculty() {
     const url = currentImportType === 'rooms' ? '/rooms/import/confirm/' : '/faculty/import/confirm/';
     const bodyKey = currentImportType === 'rooms' ? 'rooms' : 'faculty';
 

@@ -112,14 +112,33 @@ def timetable_view(request):
 def timetable_view_detail(request, id):
     timetable = get_object_or_404(ExamTimetable, id=id)
     dates, row_keys, labels, course_lookup, date_time_map, default_time = _timetable_matrix(timetable)
-    
+
+    # Build template-friendly date headers — templates cannot use dict/tuple keys
+    date_headers = []
+    for date in dates:
+        date_str = str(date)
+        time_info = date_time_map.get(date_str, {})
+        date_headers.append({
+            'date': date,
+            'time': time_info.get('time') if isinstance(time_info, dict) else None,
+        })
+
+    # Build flat row list — templates cannot look up tuple-keyed dicts
+    timetable_rows = []
+    for pid, sem in row_keys:
+        cells = []
+        for date in dates:
+            course = course_lookup.get((pid, sem, date), '--')
+            cells.append(course)
+        timetable_rows.append({
+            'label': labels.get((pid, sem), f'Program {pid} Sem {sem}'),
+            'cells': cells,
+        })
+
     context = {
         'timetable': timetable,
-        'dates': dates,
-        'row_keys': row_keys,
-        'labels': labels,
-        'course_lookup': course_lookup,
-        'date_time_map': date_time_map,
+        'date_headers': date_headers,
+        'timetable_rows': timetable_rows,
         'default_time': default_time,
         'permissions': get_user_permissions(request.user),
     }
@@ -137,6 +156,10 @@ def timetable_builder(request, id=None):
             exam_type_id = data.get('exam_type')
             date_from = data.get('date_from')
             date_to = data.get('date_to')
+
+            if not exam_type_id or not date_from or not date_to:
+                return JsonResponse({'success': False, 'message': 'Exam type, start date and end date are all required.'})
+                
             exams_per_day = data.get('exams_per_day', 1)
             cells = data.get('cells', [])
             # dict of { "YYYY-MM-DD": "HH:MM" or null }
@@ -207,6 +230,12 @@ def timetable_builder(request, id=None):
         .order_by('program_id', 'semester', 'code', 'name')
         .values('id', 'name', 'code', 'program_id', 'semester', 'specialisation_id')
     )
+    
+    # Debug: Print data counts
+    print(f"Debug - Exam types: {exam_types.count()}")
+    print(f"Debug - Grid rows: {len(grid_rows)}")
+    print(f"Debug - Academic courses: {len(academic_courses)}")
+    print(f"Debug - Grid rows sample: {grid_rows[:3] if grid_rows else 'None'}")
 
     existing_cells = []
     existing_date_times = {}  # { 'YYYY-MM-DD': 'HH:MM' }

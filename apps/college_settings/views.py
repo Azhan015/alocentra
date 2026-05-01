@@ -716,11 +716,17 @@ def course_template_excel(request):
 def course_import_excel(request):
     """
     Upload Excel and create Course rows.
-    Columns must be: Program, Semester, Code, Name, Type, Specialisation
+    Columns must be: Department, Program, Semester, Code, Name, Type, Specialisation
     """
+    # Debug: Check if file is being received
+    print(f"Request files: {list(request.FILES.keys())}")
+    print(f"Request POST data: {list(request.POST.keys())}")
+    
     f = request.FILES.get('file')
     if not f:
-        return JsonResponse({'success': False, 'message': 'No file uploaded.'}, status=400)
+        return JsonResponse({'success': False, 'message': 'No file uploaded. Please select an Excel file.'}, status=400)
+    
+    print(f"File received: {f.name}, size: {f.size}")
 
     try:
         wb = load_workbook(filename=f, data_only=True)
@@ -730,27 +736,53 @@ def course_import_excel(request):
 
     # Verify headers
     header_row = [str(c.value).strip().lower() if c.value is not None else '' for c in next(ws.iter_rows(min_row=1, max_row=1))]
-    required = ['department', 'program', 'semester', 'code', 'name', 'type', 'specialisation']
+    required = ['department', 'program', 'semester', 'code', 'name']
+    optional = ['type', 'specialisation']
     
-    # Check if all required headers are present in the first row
-    found_all = True
-    for r in required:
-        if r not in header_row:
-            found_all = False
-            break
-            
-    if not found_all:
+    # Also check for common variations
+    header_variations = {
+        'department': ['department'],
+        'program': ['program'],
+        'semester': ['semester'],
+        'code': ['code', 'course_code'],
+        'name': ['name', 'course_name'],
+        'type': ['type', 'course_type'],
+        'specialisation': ['specialisation', 'specialization']
+    }
+    
+    # Check if all required headers are present (allowing variations)
+    found_headers = set(header_row)
+    missing_headers = []
+    for req in required:
+        variations = header_variations.get(req, [req])
+        if not any(var in found_headers for var in variations):
+            missing_headers.append(req)
+    
+    if missing_headers:
         return JsonResponse(
             {
                 'success': False,
-                'message': f'Invalid columns. Required: {", ".join(required)}',
+                'message': f'Missing required columns: {", ".join(missing_headers)}. Required columns are: Department, Program, Semester, Code, Name. Optional: Type, Specialisation',
                 'found': header_row,
             },
             status=400,
         )
 
-    # Create mapping of head name to column index
-    col_map = {name: i for i, name in enumerate(header_row)}
+    # Create mapping of head name to column index (handle variations)
+    col_map = {}
+    reverse_variations = {}
+    for req, variations in header_variations.items():
+        for var in variations:
+            reverse_variations[var] = req
+    
+    print(f"Debug - Header row: {header_row}")
+    print(f"Debug - Reverse variations: {reverse_variations}")
+    
+    for i, header in enumerate(header_row):
+        if header in reverse_variations:
+            col_map[reverse_variations[header]] = i
+    
+    print(f"Debug - Column mapping: {col_map}")
 
     imported = 0
     failed = 0
@@ -760,13 +792,20 @@ def course_import_excel(request):
 
     for idx, row in enumerate(ws.iter_rows(min_row=2), start=2):
         try:
-            dept_name = (row[col_map['department']].value or '').strip() if row[col_map['department']].value is not None else ''
-            program_name = (row[col_map['program']].value or '').strip() if row[col_map['program']].value is not None else ''
-            semester_raw = row[col_map['semester']].value
-            code = (row[col_map['code']].value or '').strip() if row[col_map['code']].value is not None else ''
-            name = (row[col_map['name']].value or '').strip() if row[col_map['name']].value is not None else ''
-            ctype_raw = (row[col_map['type']].value or '').strip() if row[col_map['type']].value is not None else ''
-            spec_name = (row[col_map['specialisation']].value or '').strip() if row[col_map['specialisation']].value is not None else ''
+            dept_name = (row[col_map['department']].value or '').strip() if col_map.get('department') is not None and row[col_map['department']].value is not None else ''
+            program_name = (row[col_map['program']].value or '').strip() if col_map.get('program') is not None and row[col_map['program']].value is not None else ''
+            semester_raw = row[col_map['semester']].value if col_map.get('semester') is not None else None
+            code = (row[col_map['code']].value or '').strip() if col_map.get('code') is not None and row[col_map['code']].value is not None else ''
+            name = (row[col_map['name']].value or '').strip() if col_map.get('name') is not None and row[col_map['name']].value is not None else ''
+            
+            # Handle optional columns
+            ctype_raw = ''
+            if col_map.get('type') is not None and row[col_map['type']].value is not None:
+                ctype_raw = (row[col_map['type']].value or '').strip()
+            
+            spec_name = ''
+            if col_map.get('specialisation') is not None and row[col_map['specialisation']].value is not None:
+                spec_name = (row[col_map['specialisation']].value or '').strip()
 
             if not dept_name or not program_name or not name:
                 failed += 1
@@ -786,7 +825,7 @@ def course_import_excel(request):
                 continue
 
             try:
-                sem = int(semester_raw)
+                sem = int(semester_raw) if semester_raw is not None else 1
             except Exception:
                 sem = 1
             if sem < 1 or sem > int(prog.total_semesters):

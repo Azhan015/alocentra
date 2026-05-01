@@ -95,6 +95,16 @@ SESSION_COOKIE_AGE = 86400
 
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 0.25
+AXES_DISABLE_ACCESS_LOG = True
+
+# Email configuration for Mailjet
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'in-v3.mailjet.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config('MAILJET_API_KEY', default='')
+EMAIL_HOST_PASSWORD = config('MAILJET_SECRET_KEY', default='')
+DEFAULT_FROM_EMAIL = config('MAILJET_FROM_EMAIL', default='')
 
 CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
