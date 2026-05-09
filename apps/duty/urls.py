@@ -10,6 +10,7 @@ urlpatterns = [
     path('assign/step2/', views.duty_wizard_step2, name='wizard_step2'),
     path('assign/step3/', views.duty_wizard_step3, name='wizard_step3'),
     path('results/<int:session_id>/', views.duty_results, name='results'),
+    path('update-assignments/<int:session_id>/', views.update_assignments, name='update_assignments'),
     path('history/', views.duty_sessions_list, name='history'),
     path('history/session/<int:session_id>/resume/', views.duty_session_resume, name='session_resume'),
     path('history/session/<int:session_id>/delete/', views.duty_session_delete, name='session_delete'),

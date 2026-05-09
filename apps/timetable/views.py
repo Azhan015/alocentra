@@ -20,17 +20,35 @@ from .models import Course, ExamTimetable, Program, TimetableCell, TimetableDate
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _grid_rows_for_builder():
+    print("Debug - _grid_rows_for_builder called")
+    
+    # Check if programs exist
+    programs_count = Program.objects.count()
+    print(f"Debug - Total programs in database: {programs_count}")
+    
+    if programs_count == 0:
+        print("Debug - No programs found in database")
+        return []
+    
     rows = []
-    for prog in Program.objects.select_related('department').order_by('department__name', 'name'):
+    programs = Program.objects.select_related('department').order_by('department__name', 'name')
+    print(f"Debug - Programs query returned {programs.count()} programs")
+    
+    for prog in programs:
+        print(f"Debug - Processing program: {prog.name} (ID: {prog.id}, Dept: {prog.department.name if prog.department else 'None'})")
         for sem in range(1, prog.total_semesters + 1):
-            rows.append({
+            row_data = {
                 'program_id': prog.id,
                 'program_name': prog.name,
-                'department_name': prog.department.name,
+                'department_name': prog.department.name if prog.department else 'Unknown',
                 'semester': sem,
                 'row_key': f'{prog.id}-{sem}',
                 'program_type': prog.program_type,
-            })
+            }
+            rows.append(row_data)
+            print(f"Debug - Added row: {row_data}")
+    
+    print(f"Debug - Total rows generated: {len(rows)}")
     return rows
 
 
@@ -236,6 +254,14 @@ def timetable_builder(request, id=None):
     print(f"Debug - Grid rows: {len(grid_rows)}")
     print(f"Debug - Academic courses: {len(academic_courses)}")
     print(f"Debug - Grid rows sample: {grid_rows[:3] if grid_rows else 'None'}")
+    
+    # Check if we have essential data for timetable building
+    if len(grid_rows) == 0:
+        print("Debug - No grid rows available, showing warning to user")
+        # We'll still render the page but with a warning message
+        warning_message = "No programs found. Please add programs and departments in Settings first before building timetables."
+    else:
+        warning_message = None
 
     existing_cells = []
     existing_date_times = {}  # { 'YYYY-MM-DD': 'HH:MM' }
@@ -286,6 +312,7 @@ def timetable_builder(request, id=None):
         'existing_date_durations_json': json.dumps(existing_date_durations, ensure_ascii=False),
         'exam_type_times_json': json.dumps(exam_type_times, ensure_ascii=False),
         'existing_exam_type_default_time': existing_exam_type_default_time or '',
+        'warning_message': warning_message,
         'permissions': get_user_permissions(request.user),
     }
     return render(request, 'timetable/builder.html', context)
