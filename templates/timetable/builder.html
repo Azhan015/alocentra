@@ -244,125 +244,6 @@
             updateSemestersBtnLabel();
         }
         
-        // Simple confirmSelection function for inline script
-        function confirmSelection() {
-            console.log("Confirm selection clicked");
-            
-            const programsChecklist = document.getElementById('programsChecklist');
-            const semestersChecklist = document.getElementById('semestersChecklist');
-            const dateError = document.getElementById('dateError');
-            
-            if (!programsChecklist || !semestersChecklist) {
-                console.error("Checklist elements not found");
-                return;
-            }
-            
-            // Get selected programs and semesters
-            const selectedPrograms = Array.from(programsChecklist.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
-            const selectedSemesters = Array.from(semestersChecklist.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
-            
-            if (selectedPrograms.length === 0 || selectedSemesters.length === 0) {
-                if (dateError) {
-                    dateError.textContent = 'Please select at least one program and one semester.';
-                    dateError.classList.remove('d-none');
-                }
-                return;
-            }
-            
-            // Clear any error messages
-            if (dateError) {
-                dateError.textContent = '';
-                dateError.classList.add('d-none');
-            }
-            
-            // Generate the timetable grid
-            generateTimetableGrid(selectedPrograms, selectedSemesters);
-        }
-        
-        // Simple timetable generation function
-        function generateTimetableGrid(selectedPrograms, selectedSemesters) {
-            console.log("Generating timetable grid for programs:", selectedPrograms, "semesters:", selectedSemesters);
-            
-            if (typeof allGridRows === 'undefined' || !allGridRows || allGridRows.length === 0) {
-                console.error("No grid data available");
-                const dateError = document.getElementById('dateError');
-                if (dateError) {
-                    dateError.textContent = 'No data available. Please make sure programs and courses are set up first.';
-                    dateError.classList.remove('d-none');
-                }
-                return;
-            }
-            
-            // Filter rows based on selection
-            const filteredRows = allGridRows.filter(row => 
-                selectedPrograms.includes(String(row.program_id)) && 
-                selectedSemesters.includes(String(row.semester))
-            );
-            
-            console.log("Filtered rows:", filteredRows.length);
-            
-            if (filteredRows.length === 0) {
-                const dateError = document.getElementById('dateError');
-                if (dateError) {
-                    dateError.textContent = 'No courses found for the selected programs and semesters.';
-                    dateError.classList.remove('d-none');
-                }
-                return;
-            }
-            
-            // Generate date range
-            const dateFrom = document.getElementById('date_from').value;
-            const dateTo = document.getElementById('date_to').value;
-            const dates = [];
-            let d = new Date(dateFrom);
-            const end = new Date(dateTo);
-            while (d <= end) {
-                if (d.getDay() !== 0) { // Skip Sundays
-                    dates.push(d.toISOString().split('T')[0]);
-                }
-                d.setDate(d.getDate() + 1);
-            }
-            
-            // Build grid headers
-            const gridHead = document.getElementById('gridHead');
-            const gridBody = document.getElementById('gridBody');
-            
-            gridHead.innerHTML = '<tr><th>Program / Semester</th>' + dates.map(date => {
-                const d = new Date(date);
-                return `<th>${d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</th>`;
-            }).join('') + '</tr>';
-            
-            // Build grid body
-            gridBody.innerHTML = '';
-            filteredRows.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td><strong>${row.program_name}</strong><br>Sem ${row.semester}</td>`;
-                
-                dates.forEach(date => {
-                    const td = document.createElement('td');
-                    td.innerHTML = '<select class="form-select form-select-sm custom-cell-select"><option value="">Select Course</option></select>';
-                    tr.appendChild(td);
-                });
-                
-                gridBody.appendChild(tr);
-            });
-            
-            // Populate course options
-            if (typeof academicCourses !== 'undefined' && academicCourses) {
-                const selects = gridBody.querySelectorAll('select');
-                selects.forEach(select => {
-                    academicCourses.forEach(course => {
-                        const option = document.createElement('option');
-                        option.value = course.id;
-                        option.textContent = course.name;
-                        select.appendChild(option);
-                    });
-                });
-            }
-            
-            console.log("Timetable grid generated successfully");
-        }
-        
         // Also add event listener as backup
         document.addEventListener('DOMContentLoaded', function() {
             const btn = document.getElementById('generateGridBtn');
@@ -437,14 +318,50 @@
     <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="markNoExam()">No Exam</button>
 </div>
 
+<!-- Hidden elements to store JSON data safely -->
+<div id="gridRowsData" style="display: none;">{{ grid_rows_json|safe }}</div>
+<div id="academicCoursesData" style="display: none;">{{ academic_courses_json|safe }}</div>
+<div id="existingCellsData" style="display: none;">{{ existing_cells_json|safe }}</div>
+
 <script>
-    // Debug: Check if data is being loaded properly
-    console.log('Debug - Grid rows data:', {{ grid_rows_json|safe }});
-    console.log('Debug - Academic courses data:', {{ academic_courses_json|safe }});
+    // Get data from hidden elements to avoid JSON parsing issues
+    const gridRowsData = document.getElementById('gridRowsData');
+    const academicCoursesData = document.getElementById('academicCoursesData');
+    const existingCellsData = document.getElementById('existingCellsData');
     
-    const allGridRows = {{ grid_rows_json|safe }};
-    const academicCourses = {{ academic_courses_json|safe }};
-    const existingCells = {{ existing_cells_json|safe }};
+    let allGridRows = [];
+    let academicCourses = [];
+    let existingCells = [];
+    
+    // Parse JSON data safely
+    try {
+        if (gridRowsData && gridRowsData.textContent) {
+            allGridRows = JSON.parse(gridRowsData.textContent);
+        }
+    } catch(e) {
+        console.error('Error parsing grid rows data:', e);
+    }
+    
+    try {
+        if (academicCoursesData && academicCoursesData.textContent) {
+            academicCourses = JSON.parse(academicCoursesData.textContent);
+        }
+    } catch(e) {
+        console.error('Error parsing academic courses data:', e);
+    }
+    
+    try {
+        if (existingCellsData && existingCellsData.textContent) {
+            existingCells = JSON.parse(existingCellsData.textContent);
+        }
+    } catch(e) {
+        console.error('Error parsing existing cells data:', e);
+    }
+    
+    // Debug: Check if data is being loaded properly
+    console.log('Debug - Grid rows data:', allGridRows);
+    console.log('Debug - Academic courses data:', academicCourses);
+    console.log('Debug - Existing cells data:', existingCells);
     let selectedRowKeys = new Set();
     let removedDates = new Set();
     let activeDates = [];
@@ -633,7 +550,7 @@
             label.appendChild(cb);
             label.appendChild(t);
             semestersChecklist.appendChild(label);
-        });
+        };
 
         updateProgramsBtnLabel();
         updateSemestersBtnLabel();
@@ -835,7 +752,15 @@
     });
 
     document.addEventListener('DOMContentLoaded', function () {
-    attachDropdownToggleHandlers();
+        // Initialize dropdown handlers after a short delay to ensure all elements are ready
+        setTimeout(function() {
+            attachDropdownToggleHandlers();
+            // Also call hydrateCompactSelectors if data is available
+            if (allGridRows && allGridRows.length > 0) {
+                hydrateCompactSelectors();
+            }
+        }, 100);
+    
     // Removed strict min date — allows editing existing timetables with past dates
     if (dateFromInput.value) dateToInput.min = dateFromInput.value;
     dateFromInput.addEventListener('change', function () {

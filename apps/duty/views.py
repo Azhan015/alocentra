@@ -337,3 +337,78 @@ def duty_sessions_list(request):
     sessions = DutySession.objects.filter(created_by=request.user).order_by('-created_at')
     context = {'sessions': sessions, 'permissions': get_user_permissions(request.user)}
     return render(request, 'duty/sessions_list.html', context)
+
+
+@login_required
+@permission_required_custom('can_assign_duty')
+def update_assignments(request, session_id):
+    """Update invigilator and reliever assignments"""
+    import json
+    from django.http import JsonResponse
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Only POST method allowed'})
+    
+    try:
+        session = get_object_or_404(DutySession, id=session_id)
+        
+        # Parse the assignments data
+        assignments = json.loads(request.body)
+        
+        for assignment in assignments:
+            date = assignment.get('date')
+            room_no = assignment.get('room_no')
+            invigilator_name = assignment.get('invigilator', '').strip()
+            relievers = assignment.get('relievers', [])
+            
+            # Find the corresponding duty session room
+            try:
+                duty_session_room = DutySessionRoom.objects.get(
+                    session=session,
+                    room__room_no=room_no,
+                    date=date
+                )
+                
+                # Update invigilator assignment
+                if invigilator_name:
+                    try:
+                        faculty = Faculty.objects.get(name__iexact=invigilator_name)
+                        FacultyDutyAssignment.objects.update_or_create(
+                            duty_session_room=duty_session_room,
+                            faculty=faculty,
+                            role='INVIGILATOR',
+                            defaults={'assigned_by': request.user}
+                        )
+                    except Faculty.DoesNotExist:
+                        logger.warning(f"Faculty not found: {invigilator_name}")
+                
+                # Update reliever assignments
+                FacultyDutyAssignment.objects.filter(
+                    duty_session_room=duty_session_room,
+                    role='RELIEVER'
+                ).delete()
+                
+                for reliever_name in relievers:
+                    if reliever_name.strip():
+                        try:
+                            faculty = Faculty.objects.get(name__iexact=reliever_name.strip())
+                            FacultyDutyAssignment.objects.create(
+                                duty_session_room=duty_session_room,
+                                faculty=faculty,
+                                role='RELIEVER',
+                                assigned_by=request.user
+                            )
+                        except Faculty.DoesNotExist:
+                            logger.warning(f"Faculty not found: {reliever_name}")
+                            
+            except DutySessionRoom.DoesNotExist:
+                logger.warning(f"Duty session room not found: {room_no} on {date}")
+                continue
+        
+        return JsonResponse({'success': True, 'message': 'Assignments updated successfully'})
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON data'})
+    except Exception as e:
+        logger.error(f"Error updating assignments: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)})

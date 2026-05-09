@@ -6,6 +6,9 @@
         <p class="text-secondary mt-1 mb-0">{{ session.title }} ({{ session.exam_type.name }})</p>
     </div>
     <div class="d-flex gap-2">
+        <button class="btn btn-outline-custom d-flex align-items-center" onclick="toggleEditMode()">
+            <i class="bi bi-pencil-square me-2"></i> <span id="editBtnText">Edit Assignments</span>
+        </button>
         <button class="btn btn-outline-custom d-flex align-items-center" onclick="exportExcel()">
             <i class="bi bi-file-earmark-spreadsheet me-2"></i> Export Excel
         </button>
@@ -77,45 +80,45 @@
         </div>
 
         <div class="table-responsive">
-            <table class="table table-bordered" id="resultsTable" style="border-color: #dee2e6; font-size: 14px;">
+            <table class="table table-bordered" id="resultsTable" style="border-color: #dee2e6; font-size: 14px; color: #000 !important;">
                 <thead style="background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                    <tr class="text-uppercase small fw-bold" style="color: #495057;">
-                        <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Date</th>
-                        <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Room</th>
-                        <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Invigilator</th>
-                        <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6;">Reliever(s)</th>
-                        <th style="padding: 12px; text-align: left;">Designation</th>
+                    <tr class="text-uppercase small fw-bold" style="color: #000 !important;">
+                        <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6; color: #000 !important;">Date</th>
+                        <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6; color: #000 !important;">Room</th>
+                        <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6; color: #000 !important;">Invigilator</th>
+                        <th style="padding: 12px; text-align: left; border-right: 1px solid #dee2e6; color: #000 !important;">Reliever(s)</th>
+                        <th style="padding: 12px; text-align: left; color: #000 !important;">Designation</th>
                     </tr>
                 </thead>
-                <tbody style="color: #212529;">
+                <tbody style="color: #000 !important;">
                     {% for row in grouped_results %}
-                    <tr style="border-bottom: 1px solid #dee2e6;">
-                        <td style="padding: 12px; font-weight: 600; border-right: 1px solid #dee2e6;">{{ row.date|date:"d M Y" }}</td>
-                        <td style="padding: 12px; font-weight: 600; border-right: 1px solid #dee2e6;">{{ row.room_no }}</td>
-                        <td style="padding: 12px; border-right: 1px solid #dee2e6;">
+                    <tr style="border-bottom: 1px solid #dee2e6; color: #000 !important;">
+                        <td style="padding: 12px; font-weight: 600; border-right: 1px solid #dee2e6; color: #000 !important;">{{ row.date|date:"d M Y" }}</td>
+                        <td style="padding: 12px; font-weight: 600; border-right: 1px solid #dee2e6; color: #000 !important;">{{ row.room_no }}</td>
+                        <td style="padding: 12px; border-right: 1px solid #dee2e6; color: #000 !important;">
                             {% if row.invigilator %}
-                                <div class="fw-bold">{{ row.invigilator }}</div>
-                                <small class="text-muted">Invigilator</small>
+                                <div class="fw-bold" style="color: #000 !important;">{{ row.invigilator }}</div>
+                                <small class="text-muted" style="color: #333 !important;">Invigilator</small>
                             {% else %}
-                                <span style="color: #6c757d;">--</span>
+                                <span style="color: #6c757d !important;">--</span>
                             {% endif %}
                         </td>
-                        <td style="padding: 12px; border-right: 1px solid #dee2e6;">
+                        <td style="padding: 12px; border-right: 1px solid #dee2e6; color: #000 !important;">
                             {% if row.relievers %}
                                 {% for name in row.relievers %}
-                                    <div class="fw-bold">{{ name }}</div>
-                                    <small class="text-muted">Reliever</small>
+                                    <div class="fw-bold" style="color: #000 !important;">{{ name }}</div>
+                                    <small class="text-muted" style="color: #333 !important;">Reliever</small>
                                     {% if not forloop.last %}<hr style="margin: 8px 0; opacity: 0.3;">{% endif %}
                                 {% endfor %}
                             {% else %}
-                                <span style="color: #6c757d;">--</span>
+                                <span style="color: #6c757d !important;">--</span>
                             {% endif %}
                         </td>
-                        <td style="padding: 12px;">{{ row.designation }}</td>
+                        <td style="padding: 12px; color: #000 !important;">{{ row.designation }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center py-4" style="color: #6c757d;">No assignments could be generated. Check faculty capacity.</td>
+                        <td colspan="5" class="text-center py-4" style="color: #000 !important;">No assignments could be generated. Check faculty capacity.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -127,6 +130,138 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
+    let isEditMode = false;
+    let originalData = [];
+
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        const editBtn = document.getElementById('editBtnText');
+        const table = document.getElementById('resultsTable');
+        
+        if (isEditMode) {
+            // Enter edit mode
+            editBtn.textContent = 'Save Changes';
+            makeTableEditable(table);
+        } else {
+            // Exit edit mode and save
+            editBtn.textContent = 'Edit Assignments';
+            saveTableChanges(table);
+        }
+    }
+
+    function makeTableEditable(table) {
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        originalData = [];
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const cells = row.getElementsByTagName('td');
+            const rowData = {};
+            
+            // Store original data
+            for (let j = 0; j < cells.length; j++) {
+                const cell = cells[j];
+                const cellIndex = j;
+                
+                if (cellIndex === 2) { // Invigilator column
+                    rowData.invigilator = cell.textContent.trim();
+                    if (cell.textContent.trim() !== '--') {
+                        cell.innerHTML = `<input type="text" class="form-control form-control-sm" value="${rowData.invigilator}" data-original="${rowData.invigilator}" style="background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);">`;
+                    }
+                } else if (cellIndex === 3) { // Relievers column
+                    const relievers = [];
+                    const relieverElements = cell.querySelectorAll('.fw-bold');
+                    relieverElements.forEach(el => {
+                        if (el.textContent.trim()) {
+                            relievers.push(el.textContent.trim());
+                        }
+                    });
+                    rowData.relievers = relievers;
+                    
+                    if (relievers.length > 0) {
+                        let relieverInputs = '';
+                        relievers.forEach((reliever, index) => {
+                            relieverInputs += `<input type="text" class="form-control form-control-sm mb-1" value="${reliever}" data-original="${reliever}" data-index="${index}" style="background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle);">`;
+                        });
+                        cell.innerHTML = relieverInputs;
+                    }
+                }
+            }
+            originalData.push(rowData);
+        }
+    }
+
+    function saveTableChanges(table) {
+        const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        const updatedData = [];
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const cells = row.getElementsByTagName('td');
+            const rowData = {
+                date: cells[0].textContent.trim(),
+                room_no: cells[1].textContent.trim(),
+                invigilator: '',
+                relievers: []
+            };
+            
+            // Get updated invigilator
+            if (cells[2].querySelector('input')) {
+                rowData.invigilator = cells[2].querySelector('input').value.trim();
+            } else {
+                rowData.invigilator = cells[2].textContent.trim();
+            }
+            
+            // Get updated relievers
+            if (cells[3].querySelectorAll('input')) {
+                const relieverInputs = cells[3].querySelectorAll('input');
+                relieverInputs.forEach(input => {
+                    if (input.value.trim()) {
+                        rowData.relievers.push(input.value.trim());
+                    }
+                });
+            } else {
+                const relieverElements = cells[3].querySelectorAll('.fw-bold');
+                relieverElements.forEach(el => {
+                    if (el.textContent.trim() && el.textContent.trim() !== '--') {
+                        rowData.relievers.push(el.textContent.trim());
+                    }
+                });
+            }
+            
+            updatedData.push(rowData);
+        }
+        
+        // Send updated data to server
+        updateAssignments(updatedData);
+    }
+
+    function updateAssignments(data) {
+        fetch(`/duty/update-assignments/{{ session.id }}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                assignments: data
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // Reload page to show updated data
+                window.location.reload();
+            } else {
+                alert('Error updating assignments: ' + result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating assignments. Please try again.');
+        });
+    }
+
     function exportExcel() {
         const table = document.getElementById("resultsTable");
         const wb = XLSX.utils.table_to_book(table, { sheet: "Duty Assignments" });
